@@ -367,7 +367,7 @@ def collect_all():
     collect_textfile()
     collect_arp()
     collect_entropy()
-    if 'fileystem' in EXTRA_COLLECTORS:
+    if 'filesystem' in EXTRA_COLLECTORS:
         collect_filesystem()
     return THIS_METRICS['text']
 
