@@ -30,6 +30,7 @@ ENV_SSH_PORT = os.environ.get('SSH_PORT')
 ENV_SSH_USER = os.environ.get('SSH_USERNAME') or os.environ.get('SSH_USER')
 ENV_SSH_PASS = os.environ.get('SSH_PASSWORD') or os.environ.get('SSH_PASS')
 ENV_SSH_KEYFILE = os.environ.get('SSH_KEYFILE')
+ENV_EXTRA_COLLECTORS = os.environ.get('EXTRA_COLLECTORS')
 ENV_REMOTE_TEXTFILE_PATH = os.environ.get('REMOTE_TEXTFILE_PATH')
 
 
@@ -41,6 +42,7 @@ THIS_METRICS = {
     'text': '',
 }
 
+EXTRA_COLLECTORS = ENV_EXTRA_COLLECTORS or ''
 REMOTE_TEXTFILE_PATH = (ENV_REMOTE_TEXTFILE_PATH or '').rstrip('/')
 
 PREREAD_FILELIST = [
@@ -365,7 +367,8 @@ def collect_all():
     collect_textfile()
     collect_arp()
     collect_entropy()
-    # collect_filesystem()
+    if 'fileystem' in EXTRA_COLLECTORS:
+        collect_filesystem()
     return THIS_METRICS['text']
 
 
