@@ -1,0 +1,26 @@
+[Unit]
+Description=Prometheus remote_node_exporter
+After=network.target
+
+[Service]
+Type=simple
+Environment="PORT=9100"
+Environment="SSH_HOST=localhost"
+Environment="SSH_USER=phuslu"
+Environment="SSH_PASSWORD=123456"
+Environment="SSH_KEYFILE=/home/phuslu/.ssh/id_rsa"
+Environment="SSH_TIMEZONE_OFFSET=480"
+#ExecStartPre=/sbin/setcap cap_net_bind_service=+ep /usr/bin/python
+#ExecStartPre=/bin/mkdir -p ./log ./data
+ExecStart=/bin/bash -c 'exec ./remote_node_exporter.py &>> /dev/null'
+WorkingDirectory=/home/phuslu/phuslu.github.io/candidate
+#Restart=always
+Restart=on-abort
+RestartSec=3
+#User=nobody
+User=%i
+Group=users
+
+[Install]
+WantedBy=multi-user.target
+
