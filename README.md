@@ -15,3 +15,7 @@ systemctl start remote_node_exporter
 ```
 docker run -it --rm -p 9101:9101 -e "SSH_HOST=phus.lu" -e "SSH_USER=phuslu" -e "SSH_PASS=123456" phuslu/remote_node_exporter
 ```
+or
+```
+docker run -d --restart always --log-opt max-size=10m --log-opt max-file=2 -p 9101:9101 -e "SSH_HOST=phus.lu" -e "SSH_USER=phuslu" -e "SSH_PASS=123456" phuslu/remote_node_exporter
+```
