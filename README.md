@@ -1,5 +1,5 @@
 # remote_node_exporter
-a agentless promtheus/node_exporter
+a agentless promtheus/node_exporter via ssh
 
 ### Usage
 ```
