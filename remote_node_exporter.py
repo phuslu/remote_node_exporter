@@ -27,8 +27,8 @@ logging.basicConfig(format='%(asctime)s [%(levelname)s] process@%(process)s thre
 ENV_PORT = os.environ.get('PORT')
 ENV_SSH_HOST = os.environ.get('SSH_HOST')
 ENV_SSH_PORT = os.environ.get('SSH_PORT')
-ENV_SSH_USER = os.environ.get('SSH_USER')
-ENV_SSH_PASS = os.environ.get('SSH_PASS')
+ENV_SSH_USER = os.environ.get('SSH_USERNAME') or os.environ.get('SSH_USER')
+ENV_SSH_PASS = os.environ.get('SSH_PASSWORD') or os.environ.get('SSH_PASS')
 ENV_SSH_KEYFILE = os.environ.get('SSH_KEYFILE')
 ENV_REMOTE_TEXTFILE_PATH = os.environ.get('REMOTE_TEXTFILE_PATH')
 
