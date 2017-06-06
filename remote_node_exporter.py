@@ -31,7 +31,7 @@ ENV_SSH_USER = os.environ.get('SSH_USERNAME') or os.environ.get('SSH_USER')
 ENV_SSH_PASS = os.environ.get('SSH_PASSWORD') or os.environ.get('SSH_PASS')
 ENV_SSH_KEYFILE = os.environ.get('SSH_KEYFILE')
 ENV_EXTRA_COLLECTORS = os.environ.get('EXTRA_COLLECTORS')
-ENV_REMOTE_TEXTFILE_PATH = os.environ.get('REMOTE_TEXTFILE_PATH')
+ENV_TEXTFILE_PATH = os.environ.get('TEXTFILE_PATH')
 
 
 ssh_client = paramiko.SSHClient()
@@ -43,7 +43,7 @@ THIS_METRICS = {
 }
 
 EXTRA_COLLECTORS = ENV_EXTRA_COLLECTORS or ''
-REMOTE_TEXTFILE_PATH = (ENV_REMOTE_TEXTFILE_PATH or '').rstrip('/')
+TEXTFILE_PATH = (ENV_TEXTFILE_PATH or '').rstrip('/')
 
 PREREAD_FILELIST = [
     '/etc/storage/system_time',
@@ -105,8 +105,8 @@ def do_exec_command(cmd, redirect_stderr=False):
 
 def do_preread():
     cmd = '/bin/fgrep "" ' + ' '.join(PREREAD_FILELIST)
-    if REMOTE_TEXTFILE_PATH:
-        cmd += ' %s/*.prom' % REMOTE_TEXTFILE_PATH
+    if TEXTFILE_PATH:
+        cmd += ' %s/*.prom' % TEXTFILE_PATH
     output = do_exec_command(cmd)
     lines = output.splitlines(True)
     PREREAD_FILES.clear()
@@ -341,10 +341,10 @@ def collect_filesystem():
 
 
 def collect_textfile():
-    if not REMOTE_TEXTFILE_PATH:
+    if not TEXTFILE_PATH:
         return
     for path, text in PREREAD_FILES.items():
-        if path.startswith(REMOTE_TEXTFILE_PATH + '/'):
+        if path.startswith(TEXTFILE_PATH + '/'):
             THIS_METRICS['text'] += text.strip('\n') + '\n'
 
 
