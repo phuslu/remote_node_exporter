@@ -499,6 +499,7 @@
               "datasourceErrors": {},
               "errors": {},
               "expr": "node_memory_MemTotal{instance=\"$host\"}",
+              "format": "time_series",
               "interval": "$interval",
               "intervalFactor": 1,
               "legendFormat": "Total",
@@ -512,6 +513,7 @@
               "datasourceErrors": {},
               "errors": {},
               "expr": "node_memory_MemTotal{instance=\"$host\"} - (node_memory_MemAvailable{instance=\"$host\"} or (node_memory_MemFree{instance=\"$host\"} + node_memory_Buffers{instance=\"$host\"} + node_memory_Cached{instance=\"$host\"}))",
+              "format": "time_series",
               "interval": "$interval",
               "intervalFactor": 1,
               "legendFormat": "Used",
@@ -525,6 +527,7 @@
               "datasourceErrors": {},
               "errors": {},
               "expr": "node_memory_MemAvailable{instance=\"$host\"} or (node_memory_MemFree{instance=\"$host\"} + node_memory_Buffers{instance=\"$host\"} + node_memory_Cached{instance=\"$host\"})",
+              "format": "time_series",
               "interval": "$interval",
               "intervalFactor": 1,
               "legendFormat": "Available",
@@ -1273,21 +1276,35 @@
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
-          "seriesOverrides": [],
+          "seriesOverrides": [
+            {
+              "alias": "Total",
+              "legend": false,
+              "stack": false
+            }
+          ],
           "spaceLength": 10,
           "span": 6,
           "stack": true,
           "steppedLine": false,
           "targets": [
             {
+              "expr": "node_filesystem_size{mountpoint=\"/\", instance=\"$host\"}",
+              "format": "time_series",
+              "intervalFactor": 1,
+              "legendFormat": "Total",
+              "refId": "C",
+              "step": 60
+            },
+            {
               "calculatedInterval": "2s",
               "datasourceErrors": {},
               "errors": {},
-              "expr": "node_filesystem_size{fstype=\"rootfs\", instance=\"$host\"}",
+              "expr": "node_filesystem_size{mountpoint=\"/\", instance=\"$host\"} - node_filesystem_avail{mountpoint=\"/\", instance=\"$host\"}",
               "format": "time_series",
               "interval": "$interval",
               "intervalFactor": 1,
-              "legendFormat": "Total",
+              "legendFormat": "Used",
               "metric": "",
               "refId": "A",
               "step": 300,
@@ -1297,23 +1314,15 @@
               "calculatedInterval": "2s",
               "datasourceErrors": {},
               "errors": {},
-              "expr": "node_filesystem_size{fstype=\"rootfs\\\", instance=\"$host\"} - node_filesystem_avail{fstype=\"rootfs\", instance=\"$host\"}",
+              "expr": "node_filesystem_avail{mountpoint=\"/\", instance=\"$host\"}",
               "format": "time_series",
               "interval": "$interval",
               "intervalFactor": 1,
-              "legendFormat": "Used",
+              "legendFormat": "Available",
               "metric": "",
               "refId": "B",
               "step": 300,
               "target": ""
-            },
-            {
-              "expr": "node_filesystem_avail{fstype=\"rootfs\", instance=\"$host\"}",
-              "format": "time_series",
-              "intervalFactor": 2,
-              "legendFormat": "Available",
-              "refId": "C",
-              "step": 120
             }
           ],
           "thresholds": [],
