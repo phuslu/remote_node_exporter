@@ -1,21 +1,19 @@
 # remote_node_exporter
-a agentless promtheus/node_exporter via ssh
+a agentless prometheus/node_exporter
 
-### Usage
+**Docker**
 ```
-/usr/bin/env PORT=9101 SSH_HOST=192.168.1.1 SSH_USER=root SSH_PASS=123456 ./remote_node_exporter.py
+docker run -it --rm --net=host -e "PORT=9101" -e "SSH_HOST=example.org" -e "SSH_USER=root" -e "SSH_PASS=123456" phuslu/remote_node_exporter
 ```
-or
+
+**Systemd**
 ```
+vi remote_node_exporter.service
 systemctl enable $(pwd)/remote_node_exporter.service
 systemctl start remote_node_exporter
 ```
 
-### Docker
+**Shell**
 ```
-docker run -it --rm -p 9101:9101 -e "SSH_HOST=phus.lu" -e "SSH_USER=phuslu" -e "SSH_PASS=123456" phuslu/remote_node_exporter
-```
-or
-```
-docker run -d --restart always --log-opt max-size=10m --log-opt max-file=2 -p 9101:9101 -e "SSH_HOST=phus.lu" -e "SSH_USER=phuslu" -e "SSH_PASS=123456" phuslu/remote_node_exporter
+/usr/bin/env PORT=9101 SSH_HOST=192.168.1.1 SSH_USER=root SSH_PASS=123456 ./remote_node_exporter.py
 ```
