@@ -11,11 +11,16 @@ import ctypes
 import ctypes.util
 import logging
 import os
-import pyssh
+import paramiko
 import re
-import setproctitle
 import sys
 import time
+
+try:
+    import setproctitle
+except ImportError:
+    print('Warnning: python-setproctitle is not installed')
+    setproctitle = None
 
 logging.basicConfig(format='%(asctime)s [%(levelname)s] process@%(process)s thread@%(thread)s %(filename)s@%(lineno)s - %(funcName)s(): %(message)s', level=logging.INFO)
 
@@ -29,10 +34,7 @@ ENV_EXTRA_COLLECTORS = os.environ.get('EXTRA_COLLECTORS')
 ENV_TEXTFILE_PATH = os.environ.get('TEXTFILE_PATH')
 
 
-ssh_session = pyssh.new_session(hostname=ENV_SSH_HOST,
-                                port=ENV_SSH_PORT or '22',
-                                username=ENV_SSH_USER,
-                                password=ENV_SSH_PASS)
+ssh_client = paramiko.SSHClient()
 
 THIS_METRICS = {
     'timezone_offset': None,
@@ -66,6 +68,25 @@ PREREAD_FILELIST = [
 PREREAD_FILES = dict.fromkeys(PREREAD_FILELIST, '')
 
 
+def do_connect():
+    global ssh_client
+    host = ENV_SSH_HOST
+    port = int(ENV_SSH_PORT or '22')
+    username = ENV_SSH_USER
+    password = ENV_SSH_PASS
+    keyfile = ENV_SSH_KEYFILE
+    try:
+        if ssh_client.get_transport() is not None:
+            ssh_client.close()
+        ssh_client = paramiko.SSHClient()
+        ssh_client.set_missing_host_key_policy(paramiko.MissingHostKeyPolicy())
+        ssh_client.connect(host, port=int(port), username=username, password=password, key_filename=keyfile, compress=True, timeout=8)
+        ssh_client.get_transport().set_keepalive(60)
+        THIS_METRICS['timezone_offset'] = None
+    except (paramiko.SSHException, StandardError) as e:
+        logging.error('do_connect(%r, %d, %r) error: %s', host, port, username, e)
+
+
 def do_exec_command(cmd, redirect_stderr=False):
     SSH_COMMAND_TIMEOUT = 8
     MAX_RETRY = 3
@@ -73,11 +94,12 @@ def do_exec_command(cmd, redirect_stderr=False):
         cmd += ' 2>&1'
     for _ in range(MAX_RETRY):
         try:
-            result = ssh_session.execute(cmd)
-            return result.as_str()
-        except (pyssh.exceptions.SshError, StandardError) as e:
-            logging.error('do_exec_command(%r) error: %s, retrying', cmd, e)
+            _, stdout, _ = ssh_client.exec_command(cmd, timeout=SSH_COMMAND_TIMEOUT)
+            return stdout.read()
+        except (paramiko.SSHException, StandardError) as e:
+            logging.error('do_exec_command(%r) error: %s, reconnect', cmd, e)
             time.sleep(0.5)
+            do_connect()
     return ''
 
 
@@ -328,6 +350,8 @@ def collect_textfile():
 
 def collect_all():
     THIS_METRICS['text'] = ''
+    if ssh_client.get_transport() is None:
+        do_connect()
     do_preread()
     collect_time()
     collect_loadavg()
@@ -359,8 +383,9 @@ class MetricsHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
 def main():
     port = int(ENV_PORT or '9101')
+    if setproctitle:
+        setproctitle.setproctitle('remote_node_exporter: listen :%d [%s@%s]' % (port, ENV_SSH_USER, ENV_SSH_HOST))
     logging.info('Serving HTTP on 0.0.0.0 port %d ...', port)
-    setproctitle.setproctitle('remote_node_exporter: listen :%d [%s@%s]' % (port, ENV_SSH_USER, ENV_SSH_HOST))
     BaseHTTPServer.HTTPServer(('', port), MetricsHandler).serve_forever()
 
 

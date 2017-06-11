@@ -3,8 +3,7 @@ a agentless prometheus/node_exporter
 
 **Bash**
 ```
-sudo apt-get install libssh-dev 
-sudo pip install pyssh-ctypes setproctitle
+pip install paramiko setproctitle
 /usr/bin/env PORT=9101 SSH_HOST=192.168.1.1 SSH_USER=root SSH_PASS=123456 ./remote_node_exporter.py
 ```
 
