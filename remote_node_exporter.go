@@ -54,43 +54,6 @@ var PreReadFileList []string = []string{
 	"/proc/vmstat",
 }
 
-func splitKV(s string, sep string, trim bool) map[string]string {
-	m := make(map[string]string)
-
-	var lastname string
-	var b bytes.Buffer
-
-	scanner := bufio.NewScanner(strings.NewReader(s))
-	for scanner.Scan() {
-		parts := strings.SplitN(scanner.Text(), sep, 2)
-		if len(parts) != 2 {
-			continue
-		}
-
-		filename := strings.TrimSpace(parts[0])
-		line := parts[1]
-
-		if filename != lastname {
-			if lastname != "" {
-				m[lastname] = b.String()
-			}
-			b.Reset()
-			lastname = filename
-		}
-
-		if trim {
-			b.WriteString(strings.TrimSpace(line))
-		} else {
-			b.WriteString(line)
-			b.WriteString("\n")
-		}
-	}
-
-	m[lastname] = b.String()
-
-	return m
-}
-
 type Client struct {
 	Addr   string
 	Config *ssh.ClientConfig
@@ -100,7 +63,7 @@ type Client struct {
 	once       sync.Once
 }
 
-func (c *Client) execute(cmd string) (string, error) {
+func (c *Client) Execute(cmd string) (string, error) {
 	c.once.Do(func() {
 		if c.client == nil {
 			var err error
@@ -125,6 +88,45 @@ func (c *Client) execute(cmd string) (string, error) {
 	return b.String(), err
 }
 
+type ProcFile struct {
+	Text string
+	Sep  string
+}
+
+func (pf ProcFile) sep() string {
+	if pf.Sep != "" {
+		return pf.Sep
+	}
+	return " "
+}
+
+func (pf ProcFile) Int() (int64, error) {
+	return strconv.ParseInt(strings.TrimSpace(pf.Text), 10, 64)
+}
+
+func (pf ProcFile) Float() (float64, error) {
+	return strconv.ParseFloat(strings.TrimSpace(pf.Text), 64)
+}
+
+func (pf ProcFile) KV() map[string]string {
+	m := make(map[string]string)
+
+	scanner := bufio.NewScanner(strings.NewReader(pf.Text))
+	for scanner.Scan() {
+		parts := strings.SplitN(scanner.Text(), pf.sep(), 2)
+		if len(parts) != 2 {
+			continue
+		}
+
+		key := strings.TrimSpace(parts[0])
+		value := strings.TrimSpace(parts[1])
+
+		m[key] = value
+	}
+
+	return m
+}
+
 type Metrics struct {
 	Client *Client
 
@@ -141,9 +143,39 @@ func (m *Metrics) PreRead() error {
 		cmd += " " + TextfilePath
 	}
 
-	output, _ := m.Client.execute(cmd)
+	output, _ := m.Client.Execute(cmd)
 
-	m.preread = splitKV(output, ":", false)
+	split := func(s string) map[string]string {
+		m := make(map[string]string)
+		var lastname string
+		var b bytes.Buffer
+
+		scanner := bufio.NewScanner(strings.NewReader(s))
+		for scanner.Scan() {
+			parts := strings.SplitN(scanner.Text(), ":", 2)
+			if len(parts) != 2 {
+				continue
+			}
+
+			filename := strings.TrimSpace(parts[0])
+			line := parts[1]
+
+			if filename != lastname {
+				if lastname != "" {
+					m[lastname] = b.String()
+				}
+				b.Reset()
+				lastname = filename
+			}
+
+			b.WriteString(line)
+			b.WriteString("\n")
+		}
+		m[lastname] = b.String()
+		return m
+	}
+
+	m.preread = split(output)
 
 	for _, filename := range PreReadFileList {
 		if _, ok := m.preread[filename]; !ok {
@@ -160,7 +192,7 @@ func (m *Metrics) ReadFile(filename string) (string, error) {
 		return s, nil
 	}
 
-	return m.Client.execute("/bin/cat " + filename)
+	return m.Client.Execute("/bin/cat " + filename)
 }
 
 func (m *Metrics) PrintType(name string, typ string, help string) {
@@ -185,7 +217,7 @@ func (m *Metrics) PrintFloat(labels string, value float64) {
 	}
 }
 
-func (m *Metrics) PrintInt(labels string, value int) {
+func (m *Metrics) PrintInt(labels string, value int64) {
 	if labels != "" {
 		m.body.WriteString(fmt.Sprintf("%s{%s} ", m.name, labels))
 	} else {
@@ -193,19 +225,38 @@ func (m *Metrics) PrintInt(labels string, value int) {
 	}
 
 	if value >= 1000000 {
-		m.body.WriteString(fmt.Sprintf("%e\n", value))
+		m.body.WriteString(fmt.Sprintf("%e\n", float64(value)))
 	} else {
 		m.body.WriteString(fmt.Sprintf("%d\n", value))
 	}
 }
 
 func (m *Metrics) CollectTime() error {
+	var nsec int64
+	var t time.Time
+
 	s, err := m.ReadFile("/proc/driver/rtc")
 
 	if s != "" {
-		kvs := splitKV(s, ":", true)
-		date := kvs["rtc_date"] + " " + kvs["rtc_time"]
-		_, err = time.Parse("2006-01-02 15:04:05", date)
+		kv := (ProcFile{Text: s, Sep: ":"}).KV()
+		date := kv["rtc_date"] + " " + kv["rtc_time"]
+		t, err = time.Parse("2006-01-02 15:04:05", date)
+		nsec = t.Unix()
+	}
+
+	if nsec == 0 {
+		s, err = m.ReadFile("/etc/storage/system_time")
+		nsec, err = (ProcFile{Text: s}).Int()
+	}
+
+	if nsec == 0 {
+		s, err = m.Client.Execute("date +%s")
+		nsec, err = (ProcFile{Text: s}).Int()
+	}
+
+	if nsec != 0 {
+		m.PrintType("node_time", "counter", "System time in seconds since epoch (1970)")
+		m.PrintInt("", nsec)
 	}
 
 	return err
@@ -241,6 +292,7 @@ func (m *Metrics) CollectAll() (string, error) {
 		log.Printf("%T.PreRead() error: %+v", m, err)
 	}
 
+	m.CollectTime()
 	m.CollectLoadavg()
 
 	return m.body.String(), nil
