@@ -417,16 +417,16 @@ func (m *Metrics) CollectAll() (string, error) {
 	m.CollectFilefd()
 	m.CollectNfConntrack()
 	m.CollectMemory()
-	m.CollectStat()
-	m.CollectVmstat()
-	m.CollectFilefd()
 	m.CollectNetstat()
 	m.CollectSockstat()
+	m.CollectVmstat()
+	m.CollectStat()
 	m.CollectNetdev()
-	m.CollectDiskstats()
-	m.CollectTextfile()
 	m.CollectArp()
 	m.CollectEntropy()
+	m.CollectDiskstats()
+	m.CollectFilesystem()
+	m.CollectTextfile()
 
 	return m.body.String(), nil
 }
