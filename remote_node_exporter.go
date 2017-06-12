@@ -314,6 +314,74 @@ func (m *Metrics) CollectFilefd() error {
 	return err
 }
 
+func (m *Metrics) CollectNfConntrack() error {
+	var s string
+	var n int64
+	var err error
+
+	s, err = m.ReadFile("/proc/sys/net/netfilter/nf_conntrack_count")
+	if s != "" {
+		if n, err = (ProcFile{Text: s}).Int(); err == nil {
+			m.PrintType("node_nf_conntrack_entries", "gauge", "Number of currently allocated flow entries for connection tracking")
+			m.PrintInt("", n)
+		}
+	}
+
+	s, err = m.ReadFile("/proc/sys/net/netfilter/nf_conntrack_max")
+	if s != "" {
+		if n, err = (ProcFile{Text: s}).Int(); err == nil {
+			m.PrintType("node_nf_conntrack_entries_limit", "gauge", "Maximum size of connection tracking table")
+			m.PrintInt("", n)
+		}
+	}
+
+	return err
+}
+
+func (m *Metrics) CollectMemory() error {
+	return nil
+}
+
+func (m *Metrics) CollectNetstat() error {
+	return nil
+}
+
+func (m *Metrics) CollectSockstat() error {
+	return nil
+}
+
+func (m *Metrics) CollectVmstat() error {
+	return nil
+}
+
+func (m *Metrics) CollectStat() error {
+	return nil
+}
+
+func (m *Metrics) CollectNetdev() error {
+	return nil
+}
+
+func (m *Metrics) CollectArp() error {
+	return nil
+}
+
+func (m *Metrics) CollectEntropy() error {
+	return nil
+}
+
+func (m *Metrics) CollectDiskstats() error {
+	return nil
+}
+
+func (m *Metrics) CollectFilesystem() error {
+	return nil
+}
+
+func (m *Metrics) CollectTextfile() error {
+	return nil
+}
+
 func (m *Metrics) CollectAll() (string, error) {
 	var err error
 
@@ -325,6 +393,19 @@ func (m *Metrics) CollectAll() (string, error) {
 	m.CollectTime()
 	m.CollectLoadavg()
 	m.CollectFilefd()
+	m.CollectNfConntrack()
+	m.CollectMemory()
+	m.CollectStat()
+	m.CollectVmstat()
+	m.CollectFilefd()
+	m.CollectNfConntrack()
+	m.CollectNetstat()
+	m.CollectSockstat()
+	m.CollectNetdev()
+	m.CollectDiskstats()
+	m.CollectTextfile()
+	m.CollectArp()
+	m.CollectEntropy()
 
 	return m.body.String(), nil
 }
