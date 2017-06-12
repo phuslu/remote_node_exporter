@@ -54,6 +54,43 @@ var PreReadFileList []string = []string{
 	"/proc/vmstat",
 }
 
+func splitKV(s string, sep string, trim bool) map[string]string {
+	m := make(map[string]string)
+
+	var lastname string
+	var b bytes.Buffer
+
+	scanner := bufio.NewScanner(strings.NewReader(s))
+	for scanner.Scan() {
+		parts := strings.SplitN(scanner.Text(), sep, 2)
+		if len(parts) != 2 {
+			continue
+		}
+
+		filename := strings.TrimSpace(parts[0])
+		line := parts[1]
+
+		if filename != lastname {
+			if lastname != "" {
+				m[lastname] = b.String()
+			}
+			b.Reset()
+			lastname = filename
+		}
+
+		if trim {
+			b.WriteString(strings.TrimSpace(line))
+		} else {
+			b.WriteString(line)
+			b.WriteString("\n")
+		}
+	}
+
+	m[lastname] = b.String()
+
+	return m
+}
+
 type Client struct {
 	Addr   string
 	Config *ssh.ClientConfig
@@ -106,36 +143,7 @@ func (m *Metrics) PreRead() error {
 
 	output, _ := m.Client.execute(cmd)
 
-	var b bytes.Buffer
-	var lastname string = ""
-
-	scanner := bufio.NewScanner(strings.NewReader(output))
-	for scanner.Scan() {
-		parts := strings.SplitN(scanner.Text(), ":", 2)
-		if len(parts) != 2 {
-			continue
-		}
-
-		filename := parts[0]
-		line := parts[1]
-
-		if filename != lastname {
-			if lastname != "" {
-				m.preread[lastname] = b.String()
-			}
-			b.Reset()
-			lastname = filename
-		}
-
-		b.WriteString(line)
-		b.WriteString("\n")
-	}
-
-	m.preread[lastname] = b.String()
-
-	if err := scanner.Err(); err != nil {
-		return err
-	}
+	m.preread = splitKV(output, ":", false)
 
 	for _, filename := range PreReadFileList {
 		if _, ok := m.preread[filename]; !ok {
@@ -192,7 +200,14 @@ func (m *Metrics) PrintInt(labels string, value int) {
 }
 
 func (m *Metrics) CollectTime() error {
-	_, err := m.ReadFile("/proc/driver/rtc")
+	s, err := m.ReadFile("/proc/driver/rtc")
+
+	if s != "" {
+		kvs := splitKV(s, ":", true)
+		date := kvs["rtc_date"] + " " + kvs["rtc_time"]
+		_, err = time.Parse("2006-01-02 15:04:05", date)
+	}
+
 	return err
 }
 
