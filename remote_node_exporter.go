@@ -136,6 +136,28 @@ func (pf ProcFile) KV() map[string]string {
 	return m
 }
 
+func (pf ProcFile) KV2() map[string][]string {
+	m := make(map[string][]string)
+
+	scanner := bufio.NewScanner(strings.NewReader(pf.Text))
+	for scanner.Scan() {
+		parts := strings.SplitN(scanner.Text(), pf.sep(), 2)
+		if len(parts) != 2 {
+			continue
+		}
+
+		key := strings.TrimSpace(parts[0])
+		value := strings.TrimSpace(parts[1])
+		if v, ok := m[key]; ok {
+			m[key] = append(v, value)
+		} else {
+			m[key] = []string{value}
+		}
+	}
+
+	return m
+}
+
 type Metrics struct {
 	Client *Client
 
@@ -365,7 +387,32 @@ func (m *Metrics) CollectMemory() error {
 }
 
 func (m *Metrics) CollectNetstat() error {
-	return nil
+	var s1, s2 string
+	var err error
+
+	s1, err = m.ReadFile("/proc/net/netstat")
+	s2, err = m.ReadFile("/proc/net/snmp")
+	kv := (ProcFile{Text: (s1 + s2), Sep: ":"}).KV2()
+
+	for key, values := range kv {
+		if len(values) != 2 {
+			continue
+		}
+
+		v1 := strings.Split(values[0], " ")
+		v2 := strings.Split(values[1], " ")
+
+		for i, v := range v1 {
+			n, err := strconv.ParseInt(v2[i], 10, 64)
+			if err != nil {
+				continue
+			}
+			m.PrintType(fmt.Sprintf("node_netstat_%s_%s", key, v), "gauge", "")
+			m.PrintInt("", n)
+		}
+	}
+
+	return err
 }
 
 func (m *Metrics) CollectSockstat() error {
