@@ -416,7 +416,23 @@ func (m *Metrics) CollectNetstat() error {
 }
 
 func (m *Metrics) CollectSockstat() error {
-	return nil
+	s, err := m.ReadFile("/proc/net/sockstat")
+	kv := (ProcFile{Text: s, Sep: ":"}).KV()
+
+	for key, value := range kv {
+		vs := strings.Split(value, " ")
+		for i := 0; i < len(vs)-1; i += 2 {
+			k := vs[i]
+			n, err := strconv.ParseInt(vs[i+1], 10, 64)
+			if err != nil {
+				continue
+			}
+			m.PrintType(fmt.Sprintf("node_sockstat_%s_%s", key, k), "gauge", "")
+			m.PrintInt("", n)
+		}
+	}
+
+	return err
 }
 
 func (m *Metrics) CollectVmstat() error {
