@@ -339,7 +339,29 @@ func (m *Metrics) CollectNfConntrack() error {
 }
 
 func (m *Metrics) CollectMemory() error {
-	return nil
+	s, err := m.ReadFile("/proc/meminfo")
+	s = strings.Replace(strings.Replace(s, "(", "_", -1), ")", "", -1)
+	kv := (ProcFile{Text: s, Sep: ":"}).KV()
+	for key, value := range kv {
+		parts := strings.Split(value, " ")
+		if len(parts) == 0 {
+			continue
+		}
+
+		size, err := strconv.ParseInt(parts[0], 10, 64)
+		if err != nil {
+			continue
+		}
+
+		if len(parts) == 3 {
+			size *= 1024
+		}
+
+		m.PrintType(fmt.Sprintf("node_memory_%s", key), "gauge", "")
+		m.PrintInt("", size)
+	}
+
+	return err
 }
 
 func (m *Metrics) CollectNetstat() error {
@@ -398,7 +420,6 @@ func (m *Metrics) CollectAll() (string, error) {
 	m.CollectStat()
 	m.CollectVmstat()
 	m.CollectFilefd()
-	m.CollectNfConntrack()
 	m.CollectNetstat()
 	m.CollectSockstat()
 	m.CollectNetdev()
