@@ -14,6 +14,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -106,6 +107,14 @@ func (pf ProcFile) Int() (int64, error) {
 
 func (pf ProcFile) Float() (float64, error) {
 	return strconv.ParseFloat(strings.TrimSpace(pf.Text), 64)
+}
+
+func (pf ProcFile) Strings() []string {
+	sep := pf.Sep
+	if sep == "" {
+		sep = `\s+`
+	}
+	return regexp.MustCompile(sep).Split(strings.TrimSpace(pf.Text), -1)
 }
 
 func (pf ProcFile) KV() map[string]string {
@@ -268,7 +277,7 @@ func (m *Metrics) CollectLoadavg() error {
 		return err
 	}
 
-	parts := strings.Split(strings.TrimSpace(s), " ")
+	parts := (ProcFile{Text: s}).Strings()
 	if len(parts) < 3 {
 		return fmt.Errorf("Unknown loadavg %#v", s)
 	}
@@ -284,6 +293,27 @@ func (m *Metrics) CollectLoadavg() error {
 	return nil
 }
 
+func (m *Metrics) CollectFilefd() error {
+	s, err := m.ReadFile("/proc/sys/fs/file-nr")
+	parts := (ProcFile{Text: s}).Strings()
+
+	if len(parts) < 3 {
+		return fmt.Errorf("Unknown file-nr %#v", s)
+	}
+
+	if allocated, err := strconv.ParseInt(parts[0], 10, 64); err == nil {
+		m.PrintType("node_filefd_allocated", "gauge", "File descriptor statistics: allocated")
+		m.PrintInt("", allocated)
+	}
+
+	if maximum, err := strconv.ParseInt(parts[2], 10, 64); err == nil {
+		m.PrintType("node_filefd_maximum", "gauge", "File descriptor statistics: maximum")
+		m.PrintInt("", maximum)
+	}
+
+	return err
+}
+
 func (m *Metrics) CollectAll() (string, error) {
 	var err error
 
@@ -294,6 +324,7 @@ func (m *Metrics) CollectAll() (string, error) {
 
 	m.CollectTime()
 	m.CollectLoadavg()
+	m.CollectFilefd()
 
 	return m.body.String(), nil
 }
