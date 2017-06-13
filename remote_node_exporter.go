@@ -613,7 +613,20 @@ func (m *Metrics) CollectArp() error {
 }
 
 func (m *Metrics) CollectEntropy() error {
-	return nil
+	s, err := m.ReadFile("/proc/sys/kernel/random/entropy_avail")
+	if err != nil {
+		return err
+	}
+
+	n, err := (ProcFile{Text: s}).Int()
+	if err != nil {
+		return err
+	}
+
+	m.PrintType("node_entropy_available_bits", "gauge", "Bits of available entropy")
+	m.PrintInt("", n)
+
+	return err
 }
 
 func (m *Metrics) CollectDiskstats() error {
