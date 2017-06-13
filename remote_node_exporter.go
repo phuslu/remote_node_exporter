@@ -436,7 +436,19 @@ func (m *Metrics) CollectSockstat() error {
 }
 
 func (m *Metrics) CollectVmstat() error {
-	return nil
+	s, err := m.ReadFile("/proc/vmstat")
+	kv := (ProcFile{Text: s}).KV()
+
+	for key, value := range kv {
+		n, err := strconv.ParseInt(value, 10, 64)
+		if err != nil {
+			continue
+		}
+		m.PrintType(fmt.Sprintf("node_vmstat_%s", key), "gauge", "")
+		m.PrintInt("", n)
+	}
+
+	return err
 }
 
 func (m *Metrics) CollectStat() error {
