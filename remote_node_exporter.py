@@ -9,10 +9,12 @@
 import BaseHTTPServer
 import ctypes
 import ctypes.util
+import gzip
 import logging
 import os
 import paramiko
 import re
+import StringIO
 import sys
 import time
 
@@ -128,7 +130,7 @@ def print_metric_type(metric, mtype, mhelp=''):
 
 
 def print_metric(labels, value):
-    assert isinstance(value, (int, float))
+    assert isinstance(value, (int, long, float))
     if value >= 1000000:
         value = '%e' % value
     else:
@@ -372,7 +374,15 @@ def collect_all():
 class MetricsHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     def do_GET(self):
         body = collect_all()
+        if 'gzip' in self.headers.get('Accept-Encoding', ''):
+            out = StringIO.StringIO()
+            with gzip.GzipFile(fileobj=out, mode="w") as f:
+              f.write(body)
+            body = out.getvalue()
         self.send_response(200, 'OK')
+        self.send_header('Content-Encoding', 'gzip')
+        self.send_header('Content-Length', len(body))
+        self.send_header('Content-Type', 'text/plain; charset=utf-8')
         self.end_headers()
         self.wfile.write(body)
         self.wfile.close()
