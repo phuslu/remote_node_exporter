@@ -595,10 +595,10 @@ func (m *Metrics) CollectStat() error {
 			continue
 		}
 
-		vs := strings.Split(value, " ")
+		vs := split(value, -1)
 		for i, mode := range CPUModes {
 			if n, err := strconv.ParseInt(vs[i], 10, 64); err == nil {
-				m.PrintInt(fmt.Sprintf("cpu=\"%s\",mode=\"%s\"", key, mode), n)
+				m.PrintInt(fmt.Sprintf("cpu=\"%s\",mode=\"%s\"", key, mode), n/100)
 			}
 		}
 	}
