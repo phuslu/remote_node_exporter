@@ -1,7 +1,7 @@
 // License:
 //     MIT License, Copyright phuslu@hotmail.com
 // Usage:
-//     env PORT=9101 SSH_HOST=192.168.2.1 SSH_USER=admin SSH_PASS=123456 ./remote_node_exporter
+//     env PORT=9101 SSH_HOST=phus.lu SSH_USER=phuslu SSH_PASS=123456 ./remote_node_exporter
 // TODO:
 //     add ssh compression support
 
@@ -618,24 +618,28 @@ func (m *Metrics) CollectNetdev() error {
 	rfaces := split(strings.TrimSpace(faces[1]), -1)
 	tfaces := split(strings.TrimSpace(faces[2]), -1)
 
+	metrics := make(map[string][]string)
 	for key, value := range kv {
-		vs := split(value, -1)
-		for i, v := range vs {
-			n, err := strconv.ParseInt(v, 10, 64)
+		metrics[key] = split(value, -1)
+	}
+
+	for i := 0; i < len(rfaces)+len(tfaces); i += 1 {
+		var inter, face string
+		if i < len(rfaces) {
+			inter = "receive"
+			face = rfaces[i]
+		} else {
+			inter = "transmit"
+			face = tfaces[i-len(rfaces)]
+		}
+
+		m.PrintType(fmt.Sprintf("node_network_%s_%s", inter, face), "gauge", "")
+
+		for key, values := range metrics {
+			n, err := strconv.ParseInt(values[i], 10, 64)
 			if err != nil {
 				continue
 			}
-
-			var inter, face string
-			if i < len(rfaces) {
-				inter = "receive"
-				face = rfaces[i]
-			} else {
-				inter = "transmit"
-				face = tfaces[i-len(rfaces)]
-			}
-
-			m.PrintType(fmt.Sprintf("node_network_%s_%s", inter, face), "gauge", "")
 			m.PrintInt(fmt.Sprintf("device=\"%s\"", key), n)
 		}
 	}
