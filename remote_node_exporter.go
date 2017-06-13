@@ -444,7 +444,7 @@ func (m *Metrics) CollectMemory() error {
 	_, kv := (ProcFile{Text: s, Sep: ":"}).KV()
 
 	for key, value := range kv {
-		parts := strings.Split(value, " ")
+		parts := split(value, -1)
 		if len(parts) == 0 {
 			continue
 		}
@@ -454,7 +454,7 @@ func (m *Metrics) CollectMemory() error {
 			continue
 		}
 
-		if len(parts) == 3 {
+		if len(parts) == 2 {
 			size *= 1024
 		}
 
@@ -478,8 +478,8 @@ func (m *Metrics) CollectNetstat() error {
 			continue
 		}
 
-		v1 := strings.Split(values[0], " ")
-		v2 := strings.Split(values[1], " ")
+		v1 := split(values[0], -1)
+		v2 := split(values[1], -1)
 
 		for i, v := range v1 {
 			n, err := strconv.ParseInt(v2[i], 10, 64)
@@ -499,7 +499,7 @@ func (m *Metrics) CollectSockstat() error {
 	_, kv := (ProcFile{Text: s, Sep: ":"}).KV()
 
 	for key, value := range kv {
-		vs := strings.Split(value, " ")
+		vs := split(value, -1)
 		for i := 0; i < len(vs)-1; i += 2 {
 			k := vs[i]
 			n, err := strconv.ParseInt(vs[i+1], 10, 64)
