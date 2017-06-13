@@ -136,7 +136,7 @@ func (pf ProcFile) KV() map[string]string {
 	return m
 }
 
-func (pf ProcFile) KV2() map[string][]string {
+func (pf ProcFile) KVS() map[string][]string {
 	m := make(map[string][]string)
 
 	scanner := bufio.NewScanner(strings.NewReader(pf.Text))
@@ -392,7 +392,7 @@ func (m *Metrics) CollectNetstat() error {
 
 	s1, err = m.ReadFile("/proc/net/netstat")
 	s2, err = m.ReadFile("/proc/net/snmp")
-	kv := (ProcFile{Text: (s1 + s2), Sep: ":"}).KV2()
+	kv := (ProcFile{Text: (s1 + s2), Sep: ":"}).KVS()
 
 	for key, values := range kv {
 		if len(values) != 2 {
@@ -451,8 +451,80 @@ func (m *Metrics) CollectVmstat() error {
 	return err
 }
 
+var CPUModes []string = []string{
+	"user",
+	"nice",
+	"system",
+	"idle",
+	"iowait",
+	"irq",
+	"softirq",
+	"steal",
+	"guest",
+	"guest_nice",
+}
+
 func (m *Metrics) CollectStat() error {
-	return nil
+	s, err := m.ReadFile("/proc/stat")
+	kv := (ProcFile{Text: s}).KV()
+
+	if v, ok := kv["btime"]; ok {
+		if n, err := strconv.ParseInt(v, 10, 64); err == nil {
+			m.PrintType("node_boot_time", "gauge", "Node boot time, in unixtime")
+			m.PrintInt("", n)
+		}
+	}
+
+	if v, ok := kv["ctxt"]; ok {
+		if n, err := strconv.ParseInt(v, 10, 64); err == nil {
+			m.PrintType("node_context_switches", "counter", "Total number of context switches")
+			m.PrintInt("", n)
+		}
+	}
+
+	if v, ok := kv["processes"]; ok {
+		if n, err := strconv.ParseInt(v, 10, 64); err == nil {
+			m.PrintType("node_forks", "counter", "Total number of forks")
+			m.PrintInt("", n)
+		}
+	}
+
+	if v, ok := kv["intr"]; ok {
+		if n, err := strconv.ParseInt(v, 10, 64); err == nil {
+			m.PrintType("node_intr", "counter", "Total number of interrupts serviced")
+			m.PrintInt("", n)
+		}
+	}
+
+	if v, ok := kv["procs_blocked"]; ok {
+		if n, err := strconv.ParseInt(v, 10, 64); err == nil {
+			m.PrintType("node_procs_blocked", "gauge", "Number of processes blocked waiting for I/O to complete")
+			m.PrintInt("", n)
+		}
+	}
+
+	if v, ok := kv["procs_running"]; ok {
+		if n, err := strconv.ParseInt(v, 10, 64); err == nil {
+			m.PrintType("node_procs_running", "gauge", "Number of processes in runnable state")
+			m.PrintInt("", n)
+		}
+	}
+
+	m.PrintType("node_cpu", "counter", "Seconds the cpus spent in each mode")
+	for key, value := range kv {
+		if key == "cpu" || !strings.HasPrefix(key, "cpu") {
+			continue
+		}
+
+		vs := strings.Split(value, " ")
+		for i, mode := range CPUModes {
+			if n, err := strconv.ParseInt(vs[i], 10, 64); err == nil {
+				m.PrintInt(fmt.Sprintf("cpu=\"%s\",mode=\"%s\"", key, mode), n)
+			}
+		}
+	}
+
+	return err
 }
 
 func (m *Metrics) CollectNetdev() error {
