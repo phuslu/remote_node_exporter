@@ -90,8 +90,9 @@ func (c *Client) Execute(cmd string) (string, error) {
 }
 
 type ProcFile struct {
-	Text string
-	Sep  string
+	Text      string
+	Sep       string
+	SkipLines int
 }
 
 func (pf ProcFile) sep() string {
@@ -121,6 +122,11 @@ func (pf ProcFile) KV() map[string]string {
 	m := make(map[string]string)
 
 	scanner := bufio.NewScanner(strings.NewReader(pf.Text))
+
+	for i := 0; i < pf.SkipLines; i += 0 {
+		scanner.Scan()
+	}
+
 	for scanner.Scan() {
 		parts := strings.SplitN(scanner.Text(), pf.sep(), 2)
 		if len(parts) != 2 {
@@ -528,7 +534,19 @@ func (m *Metrics) CollectStat() error {
 }
 
 func (m *Metrics) CollectNetdev() error {
-	return nil
+	s, err := m.ReadFile("/proc/net/dev")
+	kv := (ProcFile{Text: s}).KV()
+
+	for key, value := range kv {
+		n, err := strconv.ParseInt(value, 10, 64)
+		if err != nil {
+			continue
+		}
+		m.PrintType(fmt.Sprintf("node_vmstat_%s", key), "gauge", "")
+		m.PrintInt("", n)
+	}
+
+	return err
 }
 
 func (m *Metrics) CollectArp() error {
