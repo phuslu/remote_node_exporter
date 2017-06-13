@@ -17,11 +17,14 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"reflect"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+	"unsafe"
 
 	"golang.org/x/crypto/ssh"
 )
@@ -861,6 +864,18 @@ func (m *Metrics) CollectAll() (string, error) {
 	return m.body.String(), nil
 }
 
+func SetProcessName(name string) error {
+	argv0str := (*reflect.StringHeader)(unsafe.Pointer(&os.Args[0]))
+	argv0 := (*[1 << 30]byte)(unsafe.Pointer(argv0str.Data))[:len(name)+1]
+
+	n := copy(argv0, name+string(0))
+	if n < len(argv0) {
+		argv0[n] = 0
+	}
+
+	return nil
+}
+
 func main() {
 	if SshPort == "" {
 		SshPort = "22"
@@ -909,6 +924,10 @@ func main() {
 			</body>
 			</html>`)
 	})
+
+	if runtime.GOOS == "linux" {
+		SetProcessName(fmt.Sprintf("remote_node_exporter: [%s:%s]", SshUser, SshHost))
+	}
 
 	log.Fatal(http.ListenAndServe(":"+Port, nil))
 }
