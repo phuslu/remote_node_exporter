@@ -55,6 +55,8 @@ var PreReadFileList []string = []string{
 	"/proc/vmstat",
 }
 
+var split func(string, int) []string = regexp.MustCompile(`\s+`).Split
+
 type Client struct {
 	Addr   string
 	Config *ssh.ClientConfig
@@ -118,13 +120,17 @@ func (pf ProcFile) Strings() []string {
 	return regexp.MustCompile(sep).Split(strings.TrimSpace(pf.Text), -1)
 }
 
-func (pf ProcFile) KV() map[string]string {
+func (pf ProcFile) KV() ([]string, map[string]string) {
+	h := make([]string, 0)
 	m := make(map[string]string)
 
 	scanner := bufio.NewScanner(strings.NewReader(pf.Text))
 
-	for i := 0; i < pf.SkipLines; i += 0 {
-		scanner.Scan()
+	for i := 0; i < pf.SkipLines; i += 1 {
+		if !scanner.Scan() {
+			return h, m
+		}
+		h = append(h, scanner.Text())
 	}
 
 	for scanner.Scan() {
@@ -139,13 +145,22 @@ func (pf ProcFile) KV() map[string]string {
 		m[key] = value
 	}
 
-	return m
+	return h, m
 }
 
-func (pf ProcFile) KVS() map[string][]string {
+func (pf ProcFile) KVS() ([]string, map[string][]string) {
+	h := make([]string, 0)
 	m := make(map[string][]string)
 
 	scanner := bufio.NewScanner(strings.NewReader(pf.Text))
+
+	for i := 0; i < pf.SkipLines; i += 1 {
+		if !scanner.Scan() {
+			return h, m
+		}
+		h = append(h, scanner.Text())
+	}
+
 	for scanner.Scan() {
 		parts := strings.SplitN(scanner.Text(), pf.sep(), 2)
 		if len(parts) != 2 {
@@ -161,7 +176,7 @@ func (pf ProcFile) KVS() map[string][]string {
 		}
 	}
 
-	return m
+	return h, m
 }
 
 type Metrics struct {
@@ -275,7 +290,7 @@ func (m *Metrics) CollectTime() error {
 	s, err := m.ReadFile("/proc/driver/rtc")
 
 	if s != "" {
-		kv := (ProcFile{Text: s, Sep: ":"}).KV()
+		_, kv := (ProcFile{Text: s, Sep: ":"}).KV()
 		date := kv["rtc_date"] + " " + kv["rtc_time"]
 		t, err = time.Parse("2006-01-02 15:04:05", date)
 		nsec = t.Unix()
@@ -369,7 +384,9 @@ func (m *Metrics) CollectNfConntrack() error {
 func (m *Metrics) CollectMemory() error {
 	s, err := m.ReadFile("/proc/meminfo")
 	s = strings.Replace(strings.Replace(s, "(", "_", -1), ")", "", -1)
-	kv := (ProcFile{Text: s, Sep: ":"}).KV()
+
+	_, kv := (ProcFile{Text: s, Sep: ":"}).KV()
+
 	for key, value := range kv {
 		parts := strings.Split(value, " ")
 		if len(parts) == 0 {
@@ -398,7 +415,7 @@ func (m *Metrics) CollectNetstat() error {
 
 	s1, err = m.ReadFile("/proc/net/netstat")
 	s2, err = m.ReadFile("/proc/net/snmp")
-	kv := (ProcFile{Text: (s1 + s2), Sep: ":"}).KVS()
+	_, kv := (ProcFile{Text: (s1 + s2), Sep: ":"}).KVS()
 
 	for key, values := range kv {
 		if len(values) != 2 {
@@ -423,7 +440,7 @@ func (m *Metrics) CollectNetstat() error {
 
 func (m *Metrics) CollectSockstat() error {
 	s, err := m.ReadFile("/proc/net/sockstat")
-	kv := (ProcFile{Text: s, Sep: ":"}).KV()
+	_, kv := (ProcFile{Text: s, Sep: ":"}).KV()
 
 	for key, value := range kv {
 		vs := strings.Split(value, " ")
@@ -443,7 +460,7 @@ func (m *Metrics) CollectSockstat() error {
 
 func (m *Metrics) CollectVmstat() error {
 	s, err := m.ReadFile("/proc/vmstat")
-	kv := (ProcFile{Text: s}).KV()
+	_, kv := (ProcFile{Text: s}).KV()
 
 	for key, value := range kv {
 		n, err := strconv.ParseInt(value, 10, 64)
@@ -472,7 +489,7 @@ var CPUModes []string = []string{
 
 func (m *Metrics) CollectStat() error {
 	s, err := m.ReadFile("/proc/stat")
-	kv := (ProcFile{Text: s}).KV()
+	_, kv := (ProcFile{Text: s}).KV()
 
 	if v, ok := kv["btime"]; ok {
 		if n, err := strconv.ParseInt(v, 10, 64); err == nil {
@@ -535,15 +552,34 @@ func (m *Metrics) CollectStat() error {
 
 func (m *Metrics) CollectNetdev() error {
 	s, err := m.ReadFile("/proc/net/dev")
-	kv := (ProcFile{Text: s}).KV()
+	hs, kv := (ProcFile{Text: s, Sep: ":", SkipLines: 2}).KV()
+
+	if len(hs) != 2 {
+		return nil
+	}
+
+	faces := split(strings.TrimSpace(strings.Split(hs[1], "|")[1]), -1)
 
 	for key, value := range kv {
-		n, err := strconv.ParseInt(value, 10, 64)
-		if err != nil {
-			continue
+		vs := split(value, -1)
+		for i, v := range vs {
+			n, err := strconv.ParseInt(v, 10, 64)
+			if err != nil {
+				continue
+			}
+
+			var inter, face string
+			if i < len(faces) {
+				inter = "receive"
+				face = faces[i]
+			} else {
+				inter = "transmit"
+				face = faces[i-len(faces)]
+			}
+
+			m.PrintType(fmt.Sprintf("node_network_%s_%s", inter, face), "gauge", "")
+			m.PrintInt(fmt.Sprintf("device=\"%s\"", key), n)
 		}
-		m.PrintType(fmt.Sprintf("node_vmstat_%s", key), "gauge", "")
-		m.PrintInt("", n)
 	}
 
 	return err
