@@ -569,7 +569,8 @@ func (m *Metrics) CollectStat() error {
 	}
 
 	if v, ok := kv["intr"]; ok {
-		if n, err := strconv.ParseInt(v, 10, 64); err == nil {
+		vs := split(v, -1)
+		if n, err := strconv.ParseInt(vs[0], 10, 64); err == nil {
 			m.PrintType("node_intr", "counter", "Total number of interrupts serviced")
 			m.PrintInt("", n)
 		}
