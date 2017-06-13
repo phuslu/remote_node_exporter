@@ -628,12 +628,12 @@ func (m *Metrics) CollectNetdev() error {
 			}
 
 			var inter, face string
-			if i < len(faces) {
+			if i < len(rfaces) {
 				inter = "receive"
 				face = rfaces[i]
 			} else {
 				inter = "transmit"
-				face = tfaces[i-len(faces)]
+				face = tfaces[i-len(rfaces)]
 			}
 
 			m.PrintType(fmt.Sprintf("node_network_%s_%s", inter, face), "gauge", "")
