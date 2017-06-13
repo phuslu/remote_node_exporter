@@ -10,6 +10,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"compress/gzip"
 	"fmt"
 	"io"
 	"log"
@@ -888,7 +889,14 @@ func main() {
 			return
 		}
 
-		io.WriteString(rw, s)
+		if strings.Contains(req.Header.Get("Accept-Encoding"), "gzip") {
+			rw.Header().Set("Content-Encoding", "gzip")
+			w := gzip.NewWriter(rw)
+			io.WriteString(w, s)
+			w.Close()
+		} else {
+			io.WriteString(rw, s)
+		}
 	})
 
 	log.Fatal(http.ListenAndServe(":"+Port, nil))
