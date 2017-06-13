@@ -614,7 +614,9 @@ func (m *Metrics) CollectNetdev() error {
 		return nil
 	}
 
-	faces := split(strings.TrimSpace(strings.Split(hs[1], "|")[1]), -1)
+	faces := strings.Split(hs[1], "|")
+	rfaces := split(strings.TrimSpace(faces[1]), -1)
+	tfaces := split(strings.TrimSpace(faces[2]), -1)
 
 	for key, value := range kv {
 		vs := split(value, -1)
@@ -627,10 +629,10 @@ func (m *Metrics) CollectNetdev() error {
 			var inter, face string
 			if i < len(faces) {
 				inter = "receive"
-				face = faces[i]
+				face = rfaces[i]
 			} else {
 				inter = "transmit"
-				face = faces[i-len(faces)]
+				face = tfaces[i-len(faces)]
 			}
 
 			m.PrintType(fmt.Sprintf("node_network_%s_%s", inter, face), "gauge", "")
