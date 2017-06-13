@@ -3,7 +3,7 @@
 # License:
 #     MIT License, Copyright phuslu@hotmail.com
 # Usage:
-#     /usr/bin/env PORT=9101 SSH_HOST=192.168.2.1 SSH_USER=admin SSH_PASS=123456 ./remote_node_exporter.py
+#     env PORT=9101 SSH_HOST=192.168.2.1 SSH_USER=admin SSH_PASS=123456 ./remote_node_exporter.py
 
 
 import BaseHTTPServer
@@ -30,7 +30,6 @@ ENV_SSH_PORT = os.environ.get('SSH_PORT')
 ENV_SSH_USER = os.environ.get('SSH_USERNAME') or os.environ.get('SSH_USER')
 ENV_SSH_PASS = os.environ.get('SSH_PASSWORD') or os.environ.get('SSH_PASS')
 ENV_SSH_KEYFILE = os.environ.get('SSH_KEYFILE')
-ENV_EXTRA_COLLECTORS = os.environ.get('EXTRA_COLLECTORS')
 ENV_TEXTFILE_PATH = os.environ.get('TEXTFILE_PATH')
 
 
@@ -42,7 +41,6 @@ THIS_METRICS = {
     'text': '',
 }
 
-EXTRA_COLLECTORS = ENV_EXTRA_COLLECTORS or ''
 TEXTFILE_PATH = (ENV_TEXTFILE_PATH or '').rstrip('/')
 
 PREREAD_FILELIST = [
@@ -367,8 +365,7 @@ def collect_all():
     collect_textfile()
     collect_arp()
     collect_entropy()
-    if 'filesystem' in EXTRA_COLLECTORS:
-        collect_filesystem()
+    collect_filesystem()
     return THIS_METRICS['text']
 
 
