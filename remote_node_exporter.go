@@ -92,9 +92,9 @@ func (c *Client) Execute(cmd string) (string, error) {
 }
 
 type ProcFile struct {
-	Text      string
-	Sep       string
-	SkipLines int
+	Text     string
+	Sep      string
+	SkipRows int
 }
 
 func (pf ProcFile) sep() string {
@@ -126,7 +126,7 @@ func (pf ProcFile) KV() ([]string, map[string]string) {
 
 	scanner := bufio.NewScanner(strings.NewReader(pf.Text))
 
-	for i := 0; i < pf.SkipLines; i += 1 {
+	for i := 0; i < pf.SkipRows; i += 1 {
 		if !scanner.Scan() {
 			return h, m
 		}
@@ -154,7 +154,7 @@ func (pf ProcFile) KVS() ([]string, map[string][]string) {
 
 	scanner := bufio.NewScanner(strings.NewReader(pf.Text))
 
-	for i := 0; i < pf.SkipLines; i += 1 {
+	for i := 0; i < pf.SkipRows; i += 1 {
 		if !scanner.Scan() {
 			return h, m
 		}
@@ -552,7 +552,7 @@ func (m *Metrics) CollectStat() error {
 
 func (m *Metrics) CollectNetdev() error {
 	s, err := m.ReadFile("/proc/net/dev")
-	hs, kv := (ProcFile{Text: s, Sep: ":", SkipLines: 2}).KV()
+	hs, kv := (ProcFile{Text: s, Sep: ":", SkipRows: 2}).KV()
 
 	if len(hs) != 2 {
 		return nil
@@ -591,7 +591,7 @@ func (m *Metrics) CollectArp() error {
 		return err
 	}
 
-	_, kv := (ProcFile{Text: s, SkipLines: 1}).KV()
+	_, kv := (ProcFile{Text: s, SkipRows: 1}).KV()
 
 	devices := make(map[string]int64)
 	for _, value := range kv {
