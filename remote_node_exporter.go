@@ -18,13 +18,11 @@ import (
 	"net/http"
 	"os"
 	"regexp"
-	"runtime"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/ErikDubbelboer/gspt"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -872,10 +870,6 @@ func main() {
 			HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 			Timeout:         8 * time.Second,
 		},
-	}
-
-	if runtime.GOOS == "linux" {
-		gspt.SetProcTitle(fmt.Sprintf("remote_node_exporter: [%s] listening %s", client.Addr, Port))
 	}
 
 	http.HandleFunc("/metrics", func(rw http.ResponseWriter, req *http.Request) {
