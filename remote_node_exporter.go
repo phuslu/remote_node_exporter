@@ -629,8 +629,53 @@ func (m *Metrics) CollectEntropy() error {
 	return err
 }
 
+var DiskStatsMode []string = []string{
+	"reads_completed",
+	"reads_merged",
+	"sectors_read",
+	"read_time_ms",
+	"writes_completed",
+	"writes_merged",
+	"sectors_written",
+	"write_time_ms",
+	"io_now",
+	"io_time_ms",
+	"io_time_weighted",
+}
+
 func (m *Metrics) CollectDiskstats() error {
-	return nil
+	s, err := m.ReadFile("/proc/diskstats")
+	if err != nil {
+		return err
+	}
+
+	scanner := bufio.NewScanner(strings.NewReader(s))
+
+	devices := make(map[string][]string)
+	for scanner.Scan() {
+		parts := split(strings.TrimSpace(scanner.Text()), -1)
+		if len(parts) < 2 {
+			continue
+		}
+
+		dev := parts[2]
+		values := parts[3:14]
+
+		devices[dev] = values
+	}
+
+	for i, mode := range DiskStatsMode {
+		m.PrintType(fmt.Sprintf("node_disk_%s", mode), "gauge", "")
+		for dev, values := range devices {
+			n, err := strconv.ParseInt(values[i], 10, 64)
+			if err != nil {
+				continue
+			}
+			m.PrintInt(fmt.Sprintf("device=\"%s\"", dev), n)
+		}
+	}
+
+	return err
 }
 
 func (m *Metrics) CollectFilesystem() error {
