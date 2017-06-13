@@ -2,6 +2,8 @@
 //     MIT License, Copyright phuslu@hotmail.com
 // Usage:
 //     env PORT=9101 SSH_HOST=192.168.2.1 SSH_USER=admin SSH_PASS=123456 ./remote_node_exporter
+// TODO:
+//     add ssh compression support
 
 package main
 
@@ -80,17 +82,44 @@ func (c *Client) connect() error {
 	c.client, err = ssh.Dial("tcp", c.Addr, c.Config)
 
 	if err != nil {
-		log.Printf("ssh.Dial(\"tcp\", %#v, ...) error: %+v", c.Addr, err)
+		log.Printf("ssh.Dial(\"tcp\", %#v, ...) error: %+v\n", c.Addr, err)
 	} else {
-		log.Printf("ssh.Dial(\"tcp\", %#v, ...) ok", c.Addr)
+		log.Printf("ssh.Dial(\"tcp\", %#v, ...) ok\n", c.Addr)
+	}
+
+	session, err := c.client.NewSession()
+	if err != nil {
+		log.Printf("%v.NewSession() error: %+v, reconnecting...\n", c.client, err)
+		return err
+	}
+
+	var b bytes.Buffer
+	session.Stdout = &b
+
+	session.Run("date +%z")
+	s := strings.TrimSpace(b.String())
+	if len(s) == 5 {
+		log.Printf("%#v timezone is %#v\n", c.Addr, s)
+
+		h, _ := strconv.Atoi(s[1:3])
+		m, _ := strconv.Atoi(s[3:5])
+		c.timeOffset = time.Duration((h*60+m)*60) * time.Second
+
+		if s[0] == '-' {
+			c.timeOffset = -c.timeOffset
+		}
 	}
 
 	return err
 
 }
 
+func (c *Client) TimeOffset() time.Duration {
+	return c.timeOffset
+}
+
 func (c *Client) Execute(cmd string) (string, error) {
-	log.Printf("%T.Execute(%#v)", c, cmd)
+	log.Printf("%T.Execute(%#v)\n", c, cmd)
 
 	if c.client == nil {
 		c.connect()
@@ -100,7 +129,7 @@ func (c *Client) Execute(cmd string) (string, error) {
 	for i := 0; i < retry; i += 1 {
 		session, err := c.client.NewSession()
 		if err != nil && i < retry-1 {
-			log.Printf("%v.NewSession() error: %+v, reconnecting...", c.client, err)
+			log.Printf("%v.NewSession() error: %+v, reconnecting...\n", c.client, err)
 			c.connect()
 			continue
 		}
@@ -320,6 +349,7 @@ func (m *Metrics) CollectTime() error {
 		date := kv["rtc_date"] + " " + kv["rtc_time"]
 		t, err = time.Parse("2006-01-02 15:04:05", date)
 		nsec = t.Unix()
+		nsec += int64(m.Client.TimeOffset() / time.Second)
 	}
 
 	if nsec == 0 {
@@ -802,7 +832,7 @@ func (m *Metrics) CollectAll() (string, error) {
 
 	err = m.PreRead()
 	if err != nil {
-		log.Printf("%T.PreRead() error: %+v", m, err)
+		log.Printf("%T.PreRead() error: %+v\n", m, err)
 	}
 
 	m.CollectTime()
