@@ -82,6 +82,7 @@ func (c *Client) connect() error {
 
 	if err != nil {
 		log.Printf("ssh.Dial(\"tcp\", %#v, ...) error: %+v\n", c.Addr, err)
+		return err
 	} else {
 		log.Printf("ssh.Dial(\"tcp\", %#v, ...) ok\n", c.Addr)
 	}
