@@ -63,32 +63,58 @@ type Client struct {
 
 	client     *ssh.Client
 	timeOffset time.Duration
-	once       sync.Once
+	mu         sync.Mutex
+}
+
+func (c *Client) connect() error {
+	c.client = nil
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.client != nil {
+		return nil
+	}
+
+	var err error
+	c.client, err = ssh.Dial("tcp", c.Addr, c.Config)
+
+	if err != nil {
+		log.Printf("ssh.Dial(\"tcp\", %#v, ...) error: %+v", c.Addr, err)
+	} else {
+		log.Printf("ssh.Dial(\"tcp\", %#v, ...) ok", c.Addr)
+	}
+
+	return err
+
 }
 
 func (c *Client) Execute(cmd string) (string, error) {
-	c.once.Do(func() {
-		if c.client == nil {
-			var err error
-			c.client, err = ssh.Dial("tcp", c.Addr, c.Config)
-			if err != nil {
-				log.Printf("ssh.Dial(%#v) error: %+v", c.Addr, err)
-			}
-		}
-	})
+	log.Printf("%T.Execute(%#v)", c, cmd)
 
-	session, err := c.client.NewSession()
-	if err != nil {
-		return "", err
+	if c.client == nil {
+		c.connect()
 	}
-	defer session.Close()
 
-	var b bytes.Buffer
-	session.Stdout = &b
+	retry := 2
+	for i := 0; i < retry; i += 1 {
+		session, err := c.client.NewSession()
+		if err != nil && i < retry-1 {
+			log.Printf("%v.NewSession() error: %+v, reconnecting...", c.client, err)
+			c.connect()
+			continue
+		}
+		defer session.Close()
 
-	err = session.Run(cmd)
+		var b bytes.Buffer
+		session.Stdout = &b
 
-	return b.String(), err
+		err = session.Run(cmd)
+
+		return b.String(), err
+	}
+
+	return "", nil
 }
 
 type ProcFile struct {
@@ -811,6 +837,7 @@ func main() {
 				ssh.Password(SshPass),
 			},
 			HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+			Timeout:         8 * time.Second,
 		},
 	}
 
