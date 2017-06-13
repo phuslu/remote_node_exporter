@@ -891,6 +891,7 @@ func main() {
 
 		if strings.Contains(req.Header.Get("Accept-Encoding"), "gzip") {
 			rw.Header().Set("Content-Encoding", "gzip")
+			rw.WriteHeader(http.StatusOK)
 			w := gzip.NewWriter(rw)
 			io.WriteString(w, s)
 			w.Close()
