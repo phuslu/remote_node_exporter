@@ -900,5 +900,15 @@ func main() {
 		}
 	})
 
+	http.HandleFunc("/", func(rw http.ResponseWriter, req *http.Request) {
+		io.WriteString(rw, `<html>
+			<head><title>Node Exporter</title></head>
+			<body>
+			<h1>Node Exporter</h1>
+			<p><a href="/metrics">Metrics</a></p>
+			</body>
+			</html>`)
+	})
+
 	log.Fatal(http.ListenAndServe(":"+Port, nil))
 }
