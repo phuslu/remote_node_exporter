@@ -678,7 +678,92 @@ func (m *Metrics) CollectDiskstats() error {
 	return err
 }
 
+// https://github.com/prometheus/node_exporter/blob/master/collector/filesystem_linux.go
+const (
+	defIgnoredMountPoints = "^/(sys|proc|dev)($|/)"
+	defIgnoredFSTypes     = "^(sys|proc|auto)fs$"
+)
+
+type FilesystemInfo struct {
+	MountPoint string
+	FSType     string
+	Device     string
+	Size       int64
+	Used       int64
+	Avail      int64
+}
+
 func (m *Metrics) CollectFilesystem() error {
+	s, err := m.ReadFile("/proc/mounts")
+	if err != nil {
+		return err
+	}
+
+	mountpoints := make(map[string]FilesystemInfo)
+
+	scanner := bufio.NewScanner(strings.NewReader(s))
+	for scanner.Scan() {
+		parts := split(strings.TrimSpace(scanner.Text()), -1)
+		device, mountpoint, fstype := parts[0], parts[1], parts[1]
+
+		if regexp.MustCompile(defIgnoredMountPoints).MatchString(mountpoint) {
+			continue
+		}
+		if regexp.MustCompile(defIgnoredFSTypes).MatchString(fstype) {
+			continue
+		}
+
+		mountpoints[mountpoint] = FilesystemInfo{
+			MountPoint: mountpoint,
+			FSType:     fstype,
+			Device:     device,
+		}
+	}
+
+	s, err = m.Client.Execute("df")
+	if err != nil {
+		return err
+	}
+
+	scanner = bufio.NewScanner(strings.NewReader(s))
+	scanner.Scan()
+	for scanner.Scan() {
+		parts := split(strings.TrimSpace(scanner.Text()), -1)
+		size, used, avail, mountpoint := parts[1], parts[2], parts[3], parts[5]
+
+		fi, ok := mountpoints[mountpoint]
+		if !ok {
+			continue
+		}
+
+		if n, err := strconv.ParseInt(size, 10, 64); err == nil {
+			fi.Size = n * 1024
+		}
+		if n, err := strconv.ParseInt(used, 10, 64); err == nil {
+			fi.Used = n * 1024
+		}
+		if n, err := strconv.ParseInt(avail, 10, 64); err == nil {
+			fi.Avail = n * 1024
+		}
+
+		mountpoints[mountpoint] = fi
+	}
+
+	m.PrintType("node_filesystem_size", "gauge", "Filesystem size in bytes")
+	for _, fi := range mountpoints {
+		m.PrintInt(fmt.Sprintf("device=\"%s\",fstype=\"%s\",mountpoint=\"%s\"", fi.Device, fi.FSType, fi.MountPoint), fi.Size)
+	}
+
+	m.PrintType("node_filesystem_free", "gauge", "Filesystem free space in bytes")
+	for _, fi := range mountpoints {
+		m.PrintInt(fmt.Sprintf("device=\"%s\",fstype=\"%s\",mountpoint=\"%s\"", fi.Device, fi.FSType, fi.MountPoint), fi.Size-fi.Used)
+	}
+
+	m.PrintType("node_filesystem_avail", "gauge", "Filesystem space available to non-root users in bytes")
+	for _, fi := range mountpoints {
+		m.PrintInt(fmt.Sprintf("device=\"%s\",fstype=\"%s\",mountpoint=\"%s\"", fi.Device, fi.FSType, fi.MountPoint), fi.Avail)
+	}
+
 	return nil
 }
 
