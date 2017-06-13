@@ -586,7 +586,30 @@ func (m *Metrics) CollectNetdev() error {
 }
 
 func (m *Metrics) CollectArp() error {
-	return nil
+	s, err := m.ReadFile("/proc/net/arp")
+	if err != nil {
+		return err
+	}
+
+	_, kv := (ProcFile{Text: s, SkipLines: 1}).KV()
+
+	devices := make(map[string]int64)
+	for _, value := range kv {
+		vs := split(value, -1)
+		dev := vs[len(vs)-1]
+		if n, ok := devices[dev]; !ok {
+			devices[dev] = 1
+		} else {
+			devices[dev] = n + 1
+		}
+	}
+
+	m.PrintType("node_arp_entries", "gauge", "ARP entries by device")
+	for key, value := range devices {
+		m.PrintInt(fmt.Sprintf("device=\"%s\"", key), value)
+	}
+
+	return err
 }
 
 func (m *Metrics) CollectEntropy() error {
