@@ -35,7 +35,6 @@ var (
 	SshPort         = os.Getenv("SSH_PORT")
 	SshUser         = os.Getenv("SSH_USER")
 	SshPass         = os.Getenv("SSH_PASS")
-	ExtraCollectors = os.Getenv("EXTRA_COLLECTORS")
 	TextfilePath    = os.Getenv("TEXTFILE_PATH")
 )
 
