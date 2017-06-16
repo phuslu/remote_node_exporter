@@ -1,4 +1,4 @@
-FROM busybox
+FROM scratch
 
 COPY /remote_node_exporter /
 
