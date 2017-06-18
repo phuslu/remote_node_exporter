@@ -30,12 +30,12 @@ import (
 )
 
 var (
-	Port            = os.Getenv("PORT")
-	SshHost         = os.Getenv("SSH_HOST")
-	SshPort         = os.Getenv("SSH_PORT")
-	SshUser         = os.Getenv("SSH_USER")
-	SshPass         = os.Getenv("SSH_PASS")
-	TextfilePath    = os.Getenv("TEXTFILE_PATH")
+	Port         = os.Getenv("PORT")
+	SshHost      = os.Getenv("SSH_HOST")
+	SshPort      = os.Getenv("SSH_PORT")
+	SshUser      = os.Getenv("SSH_USER")
+	SshPass      = os.Getenv("SSH_PASS")
+	TextfilePath = os.Getenv("TEXTFILE_PATH")
 )
 
 var PreReadFileList []string = []string{
@@ -130,10 +130,13 @@ func (c *Client) Execute(cmd string) (string, error) {
 	retry := 2
 	for i := 0; i < retry; i += 1 {
 		session, err := c.client.NewSession()
-		if err != nil && i < retry-1 {
-			log.Printf("%v.NewSession() error: %+v, reconnecting...\n", c.client, err)
-			c.connect()
-			continue
+		if err != nil {
+			if i < retry-1 {
+				log.Printf("NewSession() error: %+v, reconnecting...\n", err)
+				c.connect()
+				continue
+			}
+			return "", err
 		}
 		defer session.Close()
 
