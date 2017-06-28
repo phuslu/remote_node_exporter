@@ -603,7 +603,7 @@ func (m *Metrics) CollectStat() error {
 
 		vs := split(value, -1)
 		for i, mode := range CPUModes {
-			if i == len(vs) - 1 {
+			if i == len(vs) {
 				break
 			}
 			if n, err := strconv.ParseInt(vs[i], 10, 64); err == nil {
