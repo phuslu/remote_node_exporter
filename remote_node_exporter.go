@@ -603,6 +603,9 @@ func (m *Metrics) CollectStat() error {
 
 		vs := split(value, -1)
 		for i, mode := range CPUModes {
+			if i == len(vs) - 1 {
+				break
+			}
 			if n, err := strconv.ParseInt(vs[i], 10, 64); err == nil {
 				m.PrintInt(fmt.Sprintf("cpu=\"%s\",mode=\"%s\"", key, mode), n/100)
 			}
