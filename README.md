@@ -17,3 +17,9 @@ systemctl start remote_node_exporter
 ```
 docker run -it --rm --net=host -e "PORT=9101" -e "SSH_HOST=example.org" -e "SSH_USER=root" -e "SSH_PASS=123456" phuslu/remote_node_exporter
 ```
+
+**Build**
+```
+CGO_ENABLED=0 go build -ldflags '-w -s'
+docker build -t phuslu/remote_node_exporter .
+```
