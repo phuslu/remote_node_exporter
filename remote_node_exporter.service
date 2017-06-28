@@ -8,11 +8,8 @@ Environment="PORT=9100"
 Environment="SSH_HOST=localhost"
 Environment="SSH_USER=phuslu"
 Environment="SSH_PASSWORD=123456"
-#Environment="SSH_KEYFILE=/home/phuslu/.ssh/id_rsa"
-#ExecStartPre=/sbin/setcap cap_net_bind_service=+ep /usr/bin/python
-#ExecStartPre=/bin/mkdir -p ./log ./data
-ExecStart=/bin/bash -c 'exec ./remote_node_exporter.py &>> /dev/null'
-WorkingDirectory=/home/phuslu/phuslu.github.io/candidate
+ExecStart=/bin/bash -c 'exec ./remote_node_exporter &>> /dev/null'
+WorkingDirectory=/opt/consul/contrib/node_exporter
 #Restart=always
 Restart=on-abort
 RestartSec=3
