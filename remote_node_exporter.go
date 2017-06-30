@@ -931,7 +931,7 @@ func main() {
 	})
 
 	if runtime.GOOS == "linux" {
-		SetProcessName(fmt.Sprintf("remote_node_exporter: [%s:%s]", SshUser, SshHost))
+		SetProcessName(fmt.Sprintf("remote_node_exporter: [%s@%s] listening %s", SshUser, SshHost, Port))
 	}
 
 	log.Fatal(http.ListenAndServe(":"+Port, nil))
