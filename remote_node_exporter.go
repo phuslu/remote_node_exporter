@@ -101,8 +101,6 @@ func (c *Client) connect() error {
 	session.Run("date +%z")
 	s := strings.TrimSpace(b.String())
 	if len(s) == 5 {
-		log.Printf("%#v timezone is %#v\n", c.Addr, s)
-
 		h, _ := strconv.Atoi(s[1:3])
 		m, _ := strconv.Atoi(s[3:5])
 		c.timeOffset = time.Duration((h*60+m)*60) * time.Second
@@ -110,6 +108,8 @@ func (c *Client) connect() error {
 		if s[0] == '-' {
 			c.timeOffset = -c.timeOffset
 		}
+
+		log.Printf("%#v timezone is %+v\n", c.Addr, c.timeOffset)
 	}
 
 	return err
@@ -354,7 +354,7 @@ func (m *Metrics) CollectTime() error {
 		date := kv["rtc_date"] + " " + kv["rtc_time"]
 		t, err = time.Parse("2006-01-02 15:04:05", date)
 		nsec = t.Unix()
-		nsec += int64(m.Client.TimeOffset() / time.Second)
+		//nsec += int64(m.Client.TimeOffset() / time.Second)
 	}
 
 	if nsec == 0 {
