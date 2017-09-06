@@ -58,7 +58,7 @@ scrape_configs:
 [Unit]
 Description=prometheus
 [Service]
-ExecStart=/opt/prometheus/prometheus
+ExecStart=/opt/prometheus/prometheus --config.file=/opt/prometheus/prometheus.yaml
 Restart=always
 [Install]
 WantedBy=multi-user.target
