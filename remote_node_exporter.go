@@ -13,10 +13,12 @@ import (
 	"compress/gzip"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
 	"os"
+	"os/exec"
 	"reflect"
 	"regexp"
 	"runtime"
@@ -26,7 +28,12 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/go-yaml/yaml"
 	"golang.org/x/crypto/ssh"
+)
+
+const (
+	ConfigFile string = "/etc/prometheus/remote_node_exporter.yaml"
 )
 
 var (
@@ -882,6 +889,56 @@ func SetProcessName(name string) error {
 }
 
 func main() {
+	if SshHost == "" {
+		type Config struct {
+			Ssh []struct {
+				Host   string
+				Port   int
+				User   string
+				Pass   string
+				Listen int
+			}
+		}
+
+		config := &Config{}
+
+		data, err := ioutil.ReadFile(ConfigFile)
+		if err != nil {
+			log.Fatalf("error: %v", err)
+		}
+
+		err = yaml.Unmarshal(data, &config)
+		if err != nil {
+			log.Fatalf("error: %v", err)
+		}
+
+		exe, err := os.Executable()
+		if err != nil {
+			log.Fatalf("error: %v", err)
+		}
+
+		for _, s := range config.Ssh {
+			if s.Host == "" {
+				log.Fatalf("error: %#v host is empty", s)
+			}
+			if s.Port == 0 {
+				s.Port = 22
+			}
+			cmd := exec.Command(exe)
+			cmd.Env = append(os.Environ(),
+				"SSH_HOST="+s.Host,
+				"SSH_PORT="+strconv.Itoa(s.Port),
+				"SSH_USER="+s.User,
+				"SSH_PASS="+s.Pass,
+				"PORT="+strconv.Itoa(s.Listen),
+			)
+			go cmd.Run()
+		}
+
+		SetProcessName("remote_node_exporter: master process " + exe)
+		select {}
+	}
+
 	if SshPort == "" {
 		SshPort = "22"
 	}

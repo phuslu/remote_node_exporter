@@ -1,0 +1,14 @@
+[Unit]
+Description=prometheus remote node exporter
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/prometheus-remote-node-exporter
+Restart=always
+RestartSec=3
+User=nobody
+Group=users
+
+[Install]
+WantedBy=multi-user.target
