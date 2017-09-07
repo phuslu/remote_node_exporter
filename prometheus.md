@@ -58,7 +58,7 @@ scrape_configs:
 [Unit]
 Description=prometheus
 [Service]
-ExecStart=/opt/prometheus/prometheus --config.file=/opt/prometheus/prometheus.yaml
+ExecStart=/opt/prometheus/prometheus --config.file=/opt/prometheus/prometheus.yml
 Restart=always
 [Install]
 WantedBy=multi-user.target
@@ -68,7 +68,7 @@ WantedBy=multi-user.target
 [Unit]
 Description=prometheus blackbox exporter
 [Service]
-ExecStart=/opt/prometheus/blackbox_exporter --config.file=/opt/prometheus/blackbox_exporter.yaml
+ExecStart=/opt/prometheus/blackbox_exporter --config.file=/opt/prometheus/blackbox.yml
 Restart=always
 [Install]
 WantedBy=multi-user.target
@@ -78,7 +78,7 @@ WantedBy=multi-user.target
 [Unit]
 Description=prometheus remote node exporter
 [Service]
-ExecStart=/opt/prometheus/remote_node_exporter --config.file=/opt/prometheus/remote_node_exporter.yaml
+ExecStart=/opt/prometheus/remote_node_exporter --config.file=/opt/prometheus/remote_node_exporter.yml
 Restart=always
 [Install]
 WantedBy=multi-user.target
