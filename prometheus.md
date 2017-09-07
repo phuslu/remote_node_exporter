@@ -20,7 +20,7 @@ scrape_configs:
   - job_name: 'node_exporter'
     scheme: 'http'
     static_configs:
-      - targets: ['192.168.2.2:9100']
+      - targets: ['192.168.2.2:10001']
         labels:
           instance: phus.lu
   - job_name: 'blackbox'
@@ -36,7 +36,7 @@ scrape_configs:
       - source_labels: [__param_target]
         target_label: instance
       - target_label: __address__
-        replacement: $(hostname -i):9115
+        replacement: 127.0.0.1:9115
   - job_name: 'ping'
     metrics_path: /probe
     params:
@@ -50,7 +50,7 @@ scrape_configs:
       - source_labels: [__param_target]
         target_label: instance
       - target_label: __address__
-        replacement: $(hostname -i):9115
+        replacement: 127.0.0.1:9115
 ```
 
 ### create systemd services
