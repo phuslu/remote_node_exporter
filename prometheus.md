@@ -61,8 +61,11 @@ cat <<EOF >prometheus.service
 Description=prometheus
 
 [Service]
+WorkingDirectory=/opt/prometheus
 ExecStart=/opt/prometheus/prometheus --config.file=/opt/prometheus/prometheus.yml
 Restart=always
+LimitNOFILE=100000
+LimitNPROC=100000
 
 [Install]
 WantedBy=multi-user.target
@@ -75,6 +78,8 @@ Description=prometheus blackbox exporter
 [Service]
 ExecStart=/opt/prometheus/blackbox_exporter --config.file=/opt/prometheus/blackbox.yml
 Restart=always
+LimitNOFILE=100000
+LimitNPROC=100000
 
 [Install]
 WantedBy=multi-user.target
@@ -87,6 +92,8 @@ Description=prometheus remote node exporter
 [Service]
 ExecStart=/opt/prometheus/remote_node_exporter --config.file=/opt/prometheus/remote_node_exporter.yml
 Restart=always
+LimitNOFILE=100000
+LimitNPROC=100000
 
 [Install]
 WantedBy=multi-user.target
