@@ -53,38 +53,48 @@ scrape_configs:
       - target_label: __address__
         replacement: $(hostname -i):9115
 ```
-- prometheus.service
-```systemd
+
+### create systemd services
+```
+cat <<EOF >prometheus.service
 [Unit]
 Description=prometheus
+
 [Service]
 ExecStart=/opt/prometheus/prometheus --config.file=/opt/prometheus/prometheus.yml
 Restart=always
+
 [Install]
 WantedBy=multi-user.target
-```
-- prometheus-blackbox-exporter.service
-```systemd
+EOF
+
+cat <<EOF >prometheus-blackbox-exporter.service
 [Unit]
 Description=prometheus blackbox exporter
+
 [Service]
 ExecStart=/opt/prometheus/blackbox_exporter --config.file=/opt/prometheus/blackbox.yml
 Restart=always
+
 [Install]
 WantedBy=multi-user.target
-```
-- prometheus-remote-node-exporter.service
-```systemd
+EOF
+
+cat <<EOF >prometheus-remote-node-exporter.service
 [Unit]
 Description=prometheus remote node exporter
+
 [Service]
 ExecStart=/opt/prometheus/remote_node_exporter --config.file=/opt/prometheus/remote_node_exporter.yml
 Restart=always
+
 [Install]
 WantedBy=multi-user.target
+EOF
+
 ```
 
-# start monitoring
+### start monitoring
 ```
 sudo systemctl enable $(pwd)/*.service
 sudo systemctl start prometheus-blackbox-exporter
