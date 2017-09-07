@@ -4,3 +4,9 @@ ssh:
     user: root
     pass: password
     listen: 10001
+
+  - host: example.org
+    port: 22
+    user: foobar
+    pass: secret
+    listen: 10002
