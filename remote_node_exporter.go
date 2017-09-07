@@ -19,6 +19,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path"
 	"reflect"
 	"regexp"
 	"runtime"
@@ -33,7 +34,7 @@ import (
 )
 
 const (
-	ConfigFile string = "/etc/prometheus/remote_node_exporter.yaml"
+	ConfigFile string = "/etc/prometheus/remote_node_exporter.yml"
 )
 
 var (
@@ -902,17 +903,28 @@ func main() {
 
 		config := &Config{}
 
-		data, err := ioutil.ReadFile(ConfigFile)
+		exe, err := os.Executable()
 		if err != nil {
 			log.Fatalf("error: %v", err)
+		}
+
+		ConfigPaths := []string{
+			ConfigFile,
+			path.Join(path.Dir(exe), path.Base(ConfigFile)),
+		}
+
+		var data []byte
+		for _, filename := range ConfigPaths {
+			data, err = ioutil.ReadFile(filename)
+			if err == nil {
+				break
+			}
+		}
+		if err != nil {
+			log.Fatalf("error: read %+v %v", ConfigPaths, err)
 		}
 
 		err = yaml.Unmarshal(data, &config)
-		if err != nil {
-			log.Fatalf("error: %v", err)
-		}
-
-		exe, err := os.Executable()
 		if err != nil {
 			log.Fatalf("error: %v", err)
 		}
