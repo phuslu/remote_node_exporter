@@ -973,6 +973,8 @@ func main() {
 				s.Port = 22
 			}
 			cmd := exec.Command(exe)
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
 			cmd.Env = append(os.Environ(),
 				"SSH_HOST="+s.Host,
 				"SSH_PORT="+strconv.Itoa(s.Port),
