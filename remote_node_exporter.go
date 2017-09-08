@@ -878,11 +878,31 @@ func (m *Metrics) CollectAll() (string, error) {
 	return m.body.String(), nil
 }
 
-func RunForward() {
-	SetProcessName(fmt.Sprintf("remote_node_exporter: [%s@%s] listening %s tunneling %s", SshUser, SshHost, Port, RemoteAddr))
-	for {
-		time.Sleep(time.Second)
+func Forward(lconn net.Conn) {
+	addr := net.JoinHostPort(SshHost, SshPort)
+	config := &ssh.ClientConfig{
+		User: SshUser,
+		Auth: []ssh.AuthMethod{
+			ssh.Password(SshPass),
+		},
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		Timeout:         8 * time.Second,
 	}
+
+	c, err := ssh.Dial("tcp", addr, config)
+	if err != nil {
+		log.Printf("ssh.Dial(%#v) error: %+v\n", addr, err)
+		return
+	}
+
+	rconn, err := c.Dial("tcp", RemoteAddr)
+	if err != nil {
+		log.Printf("%T.Dial(%#v) error: %+v\n", RemoteAddr, err)
+		return
+	}
+
+	go io.Copy(rconn, lconn)
+	io.Copy(lconn, rconn)
 }
 
 func SetProcessName(name string) error {
@@ -991,7 +1011,22 @@ func main() {
 	}
 
 	if RemoteAddr != "" {
-		RunForward()
+		SetProcessName(fmt.Sprintf("remote_node_exporter: [%s@%s] listening %s tunneling remote %s", SshUser, SshHost, Port, RemoteAddr))
+		for {
+			ln, err := net.Listen("tcp", ":"+Port)
+			if err != nil {
+				SetProcessName(fmt.Sprintf("remote_node_exporter: [%s@%s] listening %s error: %+v", SshUser, SshHost, Port, err))
+				select {}
+			}
+
+			for {
+				conn, err := ln.Accept()
+				if err != nil {
+					time.Sleep(100 * time.Millisecond)
+				}
+				go Forward(conn)
+			}
+		}
 		return
 	}
 
