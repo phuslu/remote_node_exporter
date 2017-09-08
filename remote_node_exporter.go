@@ -44,6 +44,7 @@ var (
 	SshUser      = os.Getenv("SSH_USER")
 	SshPass      = os.Getenv("SSH_PASS")
 	TextfilePath = os.Getenv("TEXTFILE_PATH")
+	RemoteAddr   = os.Getenv("REMOTE_ADDR")
 )
 
 var PreReadFileList []string = []string{
@@ -877,6 +878,13 @@ func (m *Metrics) CollectAll() (string, error) {
 	return m.body.String(), nil
 }
 
+func RunForward() {
+	SetProcessName(fmt.Sprintf("remote_node_exporter: [%s@%s] listening %s tunneling %s", SshUser, SshHost, Port, RemoteAddr))
+	for {
+		time.Sleep(time.Second)
+	}
+}
+
 func SetProcessName(name string) error {
 	argv0str := (*reflect.StringHeader)(unsafe.Pointer(&os.Args[0]))
 	argv0 := (*[1 << 30]byte)(unsafe.Pointer(argv0str.Data))[:len(name)+1]
@@ -892,12 +900,20 @@ func SetProcessName(name string) error {
 func main() {
 	if SshHost == "" {
 		type Config struct {
-			Ssh []struct {
+			Exporter []struct {
+				Host  string
+				Port  int
+				User  string
+				Pass  string
+				Local int
+			}
+			Forward []struct {
 				Host   string
 				Port   int
 				User   string
 				Pass   string
-				Listen int
+				Local  int
+				Remote string
 			}
 		}
 
@@ -929,7 +945,7 @@ func main() {
 			log.Fatalf("error: %v", err)
 		}
 
-		for _, s := range config.Ssh {
+		for _, s := range config.Exporter {
 			if s.Host == "" {
 				log.Fatalf("error: %#v host is empty", s)
 			}
@@ -942,7 +958,26 @@ func main() {
 				"SSH_PORT="+strconv.Itoa(s.Port),
 				"SSH_USER="+s.User,
 				"SSH_PASS="+s.Pass,
-				"PORT="+strconv.Itoa(s.Listen),
+				"PORT="+strconv.Itoa(s.Local),
+			)
+			go cmd.Run()
+		}
+
+		for _, s := range config.Forward {
+			if s.Host == "" {
+				log.Fatalf("error: %#v host is empty", s)
+			}
+			if s.Port == 0 {
+				s.Port = 22
+			}
+			cmd := exec.Command(exe)
+			cmd.Env = append(os.Environ(),
+				"SSH_HOST="+s.Host,
+				"SSH_PORT="+strconv.Itoa(s.Port),
+				"SSH_USER="+s.User,
+				"SSH_PASS="+s.Pass,
+				"PORT="+strconv.Itoa(s.Local),
+				"REMOTE_ADDR="+s.Remote,
 			)
 			go cmd.Run()
 		}
@@ -953,6 +988,11 @@ func main() {
 
 	if SshPort == "" {
 		SshPort = "22"
+	}
+
+	if RemoteAddr != "" {
+		RunForward()
+		return
 	}
 
 	client := &Client{
