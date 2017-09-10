@@ -14,7 +14,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net"
 	"net/http"
 	"os"
@@ -29,12 +28,16 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/go-yaml/yaml"
 	"golang.org/x/crypto/ssh"
+	"gopkg.in/alecthomas/kingpin.v2"
+	"gopkg.in/yaml.v2"
+
+	"github.com/prometheus/common/log"
+	"github.com/prometheus/common/version"
 )
 
-const (
-	ConfigFile string = "/etc/prometheus/remote_node_exporter.yml"
+var (
+	configFile = kingpin.Flag("config.file", "Remote node exporter configuration file.").Default("remote_node_exporter.yml").String()
 )
 
 var (
@@ -92,15 +95,15 @@ func (c *Client) connect() error {
 	c.client, err = ssh.Dial("tcp", c.Addr, c.Config)
 
 	if err != nil {
-		log.Printf("ssh.Dial(\"tcp\", %#v, ...) error: %+v\n", c.Addr, err)
+		log.Infof("ssh.Dial(\"tcp\", %#v, ...) error: %+v\n", c.Addr, err)
 		return err
 	} else {
-		log.Printf("ssh.Dial(\"tcp\", %#v, ...) ok\n", c.Addr)
+		log.Infof("ssh.Dial(\"tcp\", %#v, ...) ok\n", c.Addr)
 	}
 
 	session, err := c.client.NewSession()
 	if err != nil {
-		log.Printf("%v.NewSession() error: %+v, reconnecting...\n", c.client, err)
+		log.Infof("%v.NewSession() error: %+v, reconnecting...\n", c.client, err)
 		return err
 	}
 
@@ -118,7 +121,7 @@ func (c *Client) connect() error {
 			c.timeOffset = -c.timeOffset
 		}
 
-		log.Printf("%#v timezone is %+v\n", c.Addr, c.timeOffset)
+		log.Infof("%#v timezone is %+v\n", c.Addr, c.timeOffset)
 	}
 
 	return err
@@ -130,7 +133,7 @@ func (c *Client) TimeOffset() time.Duration {
 }
 
 func (c *Client) Execute(cmd string) (string, error) {
-	log.Printf("%T.Execute(%#v)\n", c, cmd)
+	log.Infof("%T.Execute(%#v)\n", c, cmd)
 
 	if c.client == nil {
 		c.connect()
@@ -141,7 +144,7 @@ func (c *Client) Execute(cmd string) (string, error) {
 		session, err := c.client.NewSession()
 		if err != nil {
 			if i < retry-1 {
-				log.Printf("NewSession() error: %+v, reconnecting...\n", err)
+				log.Infof("NewSession() error: %+v, reconnecting...\n", err)
 				c.connect()
 				continue
 			}
@@ -856,7 +859,7 @@ func (m *Metrics) CollectAll() (string, error) {
 
 	err = m.PreRead()
 	if err != nil {
-		log.Printf("%T.PreRead() error: %+v\n", m, err)
+		log.Infof("%T.PreRead() error: %+v\n", m, err)
 	}
 
 	m.CollectTime()
@@ -891,13 +894,13 @@ func Forward(lconn net.Conn) {
 
 	c, err := ssh.Dial("tcp", addr, config)
 	if err != nil {
-		log.Printf("ssh.Dial(%#v) error: %+v\n", addr, err)
+		log.Infof("ssh.Dial(%#v) error: %+v\n", addr, err)
 		return
 	}
 
 	rconn, err := c.Dial("tcp", RemoteAddr)
 	if err != nil {
-		log.Printf("%T.Dial(%#v) error: %+v\n", RemoteAddr, err)
+		log.Infof("%T.Dial(%#v) error: %+v\n", RemoteAddr, err)
 		return
 	}
 
@@ -918,6 +921,14 @@ func SetProcessName(name string) error {
 }
 
 func main() {
+	log.AddFlags(kingpin.CommandLine)
+	kingpin.Version(version.Print("remote_node_exporter"))
+	kingpin.HelpFlag.Short('h')
+	kingpin.Parse()
+
+	log.Infoln("Starting remote_node_exporter", version.Info())
+	log.Infoln("Build context", version.BuildContext())
+
 	if SshHost == "" {
 		type Config struct {
 			Exporter []struct {
@@ -945,8 +956,8 @@ func main() {
 		}
 
 		ConfigPaths := []string{
-			ConfigFile,
-			path.Join(path.Dir(exe), path.Base(ConfigFile)),
+			*configFile,
+			path.Join(path.Dir(exe), path.Base(*configFile)),
 		}
 
 		var data []byte
