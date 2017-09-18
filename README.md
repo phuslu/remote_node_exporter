@@ -67,7 +67,7 @@ Description=prometheus
 [Service]
 WorkingDirectory=/opt/prometheus
 ExecStart=/opt/prometheus/prometheus --config.file=/opt/prometheus/prometheus.yml
-ExecReload=/bin/kill -HUP $MAINPID
+ExecReload=/bin/kill -HUP \$MAINPID
 Restart=always
 LimitNOFILE=100000
 LimitNPROC=100000
@@ -112,7 +112,36 @@ sudo systemctl start prometheus-blackbox-exporter
 sudo systemctl start prometheus-remote-node-exporter
 sudo systemctl start prometheus
 ```
-5. Impport to grafana dashboard
+5. Install grafana
+```
+mkdir grafana
+sudo mv grafana /opt/
+cd /opt/grafana
+
+curl -L https://s3-us-west-2.amazonaws.com/grafana-releases/release/grafana-4.5.1.linux-x64.tar.gz | tar xvzp --strip-components=1
+
+cat <<EOF >grafana.service
+[Unit]
+Description=grafana
+
+[Service]
+WorkingDirectory=/opt/grafana
+ExecStart=/opt/grafana/bin/grafana-server
+ExecReload=/bin/kill -HUP \$MAINPID
+Restart=always
+LimitNOFILE=100000
+LimitNPROC=100000
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo systemctl enable $(pwd)/grafana.service
+sudo systemctl start grafana.service
+
+```
+6. Impport to grafana dashboard
   - Visit http://<your_ip>:9090 to verify prometheus api
   - Import http://<your_ip>:9090 as datasource to grafana server
   - Import [grafana_dashboard.json](https://raw.githubusercontent.com/phuslu/remote_node_exporter/master/grafana_dashboard.json) as dashboard to grafana server
+
