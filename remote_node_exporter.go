@@ -36,6 +36,10 @@ import (
 	"github.com/prometheus/common/version"
 )
 
+const (
+	DefaultTextfilePath = "/var/lib/prometheus/node-exporter"
+)
+
 var (
 	configFile = kingpin.Flag("config.file", "Remote node exporter configuration file.").Default("remote_node_exporter.yml").String()
 )
@@ -46,8 +50,8 @@ var (
 	SshPort      = os.Getenv("SSH_PORT")
 	SshUser      = os.Getenv("SSH_USER")
 	SshPass      = os.Getenv("SSH_PASS")
-	TextfilePath = os.Getenv("TEXTFILE_PATH")
 	RemoteAddr   = os.Getenv("REMOTE_ADDR")
+	TextfilePath = os.Getenv("TEXTFILE_PATH")
 )
 
 var PreReadFileList []string = []string{
@@ -263,9 +267,10 @@ func (m *Metrics) PreRead() error {
 	m.preread = make(map[string]string)
 
 	cmd := "/bin/fgrep \"\" " + strings.Join(PreReadFileList, " ")
-	if TextfilePath != "" {
-		cmd += " " + TextfilePath
+	if TextfilePath == "" {
+		TextfilePath = DefaultTextfilePath
 	}
+	cmd += " " + TextfilePath + "/*.prom"
 
 	output, _ := m.Client.Execute(cmd)
 
@@ -308,6 +313,14 @@ func (m *Metrics) PreRead() error {
 	}
 
 	return nil
+}
+
+func (m *Metrics) Files() []string {
+	files := []string{}
+	for f := range m.preread {
+		files = append(files, f)
+	}
+	return files
 }
 
 func (m *Metrics) ReadFile(filename string) (string, error) {
@@ -353,6 +366,10 @@ func (m *Metrics) PrintInt(labels string, value int64) {
 	} else {
 		m.body.WriteString(fmt.Sprintf("%d\n", value))
 	}
+}
+
+func (m *Metrics) PrintRaw(s string) {
+	m.body.WriteString(s)
 }
 
 func (m *Metrics) CollectTime() error {
@@ -851,6 +868,16 @@ func (m *Metrics) CollectFilesystem() error {
 }
 
 func (m *Metrics) CollectTextfile() error {
+	for _, name := range m.Files() {
+		if !strings.HasPrefix(name, TextfilePath) {
+			continue
+		}
+		s, err := m.ReadFile(name)
+		if err != nil {
+			return err
+		}
+		m.PrintRaw(string(s))
+	}
 	return nil
 }
 
