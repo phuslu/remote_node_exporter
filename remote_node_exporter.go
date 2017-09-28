@@ -82,6 +82,7 @@ type Client struct {
 
 	client     *ssh.Client
 	timeOffset time.Duration
+	hasTimeout bool
 	mu         sync.Mutex
 }
 
@@ -127,6 +128,8 @@ func (c *Client) connect() error {
 
 		log.Infof("%#v timezone is %+v\n", c.Addr, c.timeOffset)
 	}
+
+	c.hasTimeout = session.Run("timeout --version") == nil
 
 	return err
 
@@ -820,7 +823,12 @@ func (m *Metrics) CollectFilesystem() error {
 		}
 	}
 
-	s, err = m.Client.Execute("df")
+	cmd := "df"
+	if m.Client.hasTimeout {
+		cmd = "timeout 3 df"
+	}
+
+	s, err = m.Client.Execute(cmd)
 	if err != nil {
 		return err
 	}
