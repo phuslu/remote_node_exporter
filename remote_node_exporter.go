@@ -115,8 +115,10 @@ func (c *Client) connect() error {
 	var b bytes.Buffer
 	session.Stdout = &b
 
-	session.Run("date +%z")
-	s := strings.TrimSpace(b.String())
+	session.Run("date +%z; test -f /usr/bin/timeout && echo 1 || echo 0")
+	parts := strings.Split(b.String(), "\n")
+	log.Infof("session.Run() return %#v\n", parts)
+	s := strings.TrimSpace(parts[0])
 	if len(s) == 5 {
 		h, _ := strconv.Atoi(s[1:3])
 		m, _ := strconv.Atoi(s[3:5])
@@ -126,10 +128,11 @@ func (c *Client) connect() error {
 			c.timeOffset = -c.timeOffset
 		}
 
-		log.Infof("%#v timezone is %+v\n", c.Addr, c.timeOffset)
 	}
-
-	c.hasTimeout = session.Run("timeout --version") == nil
+	if parts[1] == "1" {
+		c.hasTimeout = true
+	}
+	log.Infof("%#v timezone is %+v, has timeout command is %+v\n", c.Addr, c.timeOffset, c.hasTimeout)
 
 	return err
 
@@ -831,6 +834,10 @@ func (m *Metrics) CollectFilesystem() error {
 	s, err = m.Client.Execute(cmd)
 	if err != nil {
 		return err
+	}
+
+	if s == "" {
+		return fmt.Errorf("df timed out")
 	}
 
 	scanner = bufio.NewScanner(strings.NewReader(s))
