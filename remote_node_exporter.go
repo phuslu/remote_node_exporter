@@ -787,7 +787,7 @@ func (m *Metrics) CollectDiskstats() error {
 // https://github.com/prometheus/node_exporter/blob/master/collector/filesystem_linux.go
 const (
 	defIgnoredMountPoints = "^/(sys|proc|dev)($|/)"
-	defIgnoredFSTypes     = "^(sys|proc|auto)fs$"
+	defIgnoredFSTypes     = "^(sysfs|procfs|autofs|nfs4|cgroup|fuse\\.lxcfs)$"
 )
 
 type FilesystemInfo struct {
@@ -810,7 +810,7 @@ func (m *Metrics) CollectFilesystem() error {
 	scanner := bufio.NewScanner(strings.NewReader(s))
 	for scanner.Scan() {
 		parts := split(strings.TrimSpace(scanner.Text()), -1)
-		device, mountpoint, fstype := parts[0], parts[1], parts[1]
+		device, mountpoint, fstype := parts[0], parts[1], parts[2]
 
 		if regexp.MustCompile(defIgnoredMountPoints).MatchString(mountpoint) {
 			continue
@@ -830,9 +830,12 @@ func (m *Metrics) CollectFilesystem() error {
 	if m.Client.hasTimeout {
 		cmd = "timeout 3 df"
 	}
+	for mountpoint, _ := range mountpoints {
+		cmd += " " + mountpoint
+	}
 
 	s, err = m.Client.Execute(cmd)
-	if err != nil {
+	if err != nil && s == "" {
 		return err
 	}
 
