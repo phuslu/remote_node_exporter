@@ -797,6 +797,8 @@ type FilesystemInfo struct {
 	Size       int64
 	Used       int64
 	Avail      int64
+	Files      int64
+	FilesFree  int64
 }
 
 func (m *Metrics) CollectFilesystem() error {
@@ -830,9 +832,11 @@ func (m *Metrics) CollectFilesystem() error {
 	if m.Client.hasTimeout {
 		cmd = "timeout 3 df"
 	}
-	for mountpoint, _ := range mountpoints {
-		cmd += " " + mountpoint
+	args := ""
+	for mountpoint := range mountpoints {
+		args += " " + mountpoint
 	}
+	cmd = fmt.Sprintf("%s %s ; %s -i %s", cmd, args, cmd, args)
 
 	s, err = m.Client.Execute(cmd)
 	if err != nil && s == "" {
@@ -844,9 +848,15 @@ func (m *Metrics) CollectFilesystem() error {
 	}
 
 	scanner = bufio.NewScanner(strings.NewReader(s))
-	scanner.Scan()
+	isInodesLine := false
 	for scanner.Scan() {
 		parts := split(strings.TrimSpace(scanner.Text()), -1)
+
+		if parts[0] == "Filesystem" {
+			isInodesLine = parts[1] == "Inodes"
+			continue
+		}
+
 		size, used, avail, mountpoint := parts[1], parts[2], parts[3], parts[5]
 
 		fi, ok := mountpoints[mountpoint]
@@ -855,13 +865,21 @@ func (m *Metrics) CollectFilesystem() error {
 		}
 
 		if n, err := strconv.ParseInt(size, 10, 64); err == nil {
-			fi.Size = n * 1024
+			if !isInodesLine {
+				fi.Size = n * 1024
+			} else {
+				fi.Files = n
+			}
 		}
 		if n, err := strconv.ParseInt(used, 10, 64); err == nil {
 			fi.Used = n * 1024
 		}
 		if n, err := strconv.ParseInt(avail, 10, 64); err == nil {
-			fi.Avail = n * 1024
+			if !isInodesLine {
+				fi.Avail = n * 1024
+			} else {
+				fi.FilesFree = n
+			}
 		}
 
 		mountpoints[mountpoint] = fi
@@ -880,6 +898,16 @@ func (m *Metrics) CollectFilesystem() error {
 	m.PrintType("node_filesystem_avail", "gauge", "Filesystem space available to non-root users in bytes")
 	for _, fi := range mountpoints {
 		m.PrintInt(fmt.Sprintf("device=\"%s\",fstype=\"%s\",mountpoint=\"%s\"", fi.Device, fi.FSType, fi.MountPoint), fi.Avail)
+	}
+
+	m.PrintType("node_filesystem_files", "gauge", "Filesystem inodes number")
+	for _, fi := range mountpoints {
+		m.PrintInt(fmt.Sprintf("device=\"%s\",fstype=\"%s\",mountpoint=\"%s\"", fi.Device, fi.FSType, fi.MountPoint), fi.Files)
+	}
+
+	m.PrintType("node_filesystem_files_free", "gauge", "Filesystem inodes free number")
+	for _, fi := range mountpoints {
+		m.PrintInt(fmt.Sprintf("device=\"%s\",fstype=\"%s\",mountpoint=\"%s\"", fi.Device, fi.FSType, fi.MountPoint), fi.FilesFree)
 	}
 
 	return nil
