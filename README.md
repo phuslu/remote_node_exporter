@@ -13,7 +13,7 @@ cd /opt/prometheus
 
 curl -L https://github.com/prometheus/prometheus/releases/download/v1.7.1/prometheus-1.7.1.linux-amd64.tar.gz | tar xvzp --strip-components=1
 curl -L https://github.com/prometheus/blackbox_exporter/releases/download/v0.8.1/blackbox_exporter-0.8.1.linux-amd64.tar.gz | tar xvzp --strip-components=1
-curl -L https://github.com/phuslu/remote_node_exporter/releases/download/v0.5.0/remote_node_exporter-0.5.0.linux-amd64.tar.gz | tar xvzp --strip-components=1
+curl -L https://github.com/phuslu/remote_node_exporter/releases/download/v0.6.0/remote_node_exporter-0.6.0.linux-amd64.tar.gz | tar xvzp --strip-components=1
 
 ```
 2. Configure prometheus.yml
