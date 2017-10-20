@@ -872,7 +872,9 @@ func (m *Metrics) CollectFilesystem() error {
 			}
 		}
 		if n, err := strconv.ParseInt(used, 10, 64); err == nil {
-			fi.Used = n * 1024
+			if !isInodesLine {
+				fi.Used = n * 1024
+			}
 		}
 		if n, err := strconv.ParseInt(avail, 10, 64); err == nil {
 			if !isInodesLine {
