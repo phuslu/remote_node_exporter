@@ -787,7 +787,7 @@ func (m *Metrics) CollectDiskstats() error {
 // https://github.com/prometheus/node_exporter/blob/master/collector/filesystem_linux.go
 const (
 	defIgnoredMountPoints = "^/(sys|proc|dev)($|/)"
-	defIgnoredFSTypes     = "^(sysfs|procfs|autofs|nfs4|cgroup|fuse\\.lxcfs)$"
+	defIgnoredFSTypes     = "^(sysfs|procfs|autofs|nfs|nfs4|cgroup|fuse\\.lxcfs)$"
 )
 
 type FilesystemInfo struct {
