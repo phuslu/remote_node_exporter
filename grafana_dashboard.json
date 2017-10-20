@@ -14,7 +14,7 @@
       "type": "grafana",
       "id": "grafana",
       "name": "Grafana",
-      "version": "4.3.1"
+      "version": "4.5.1"
     },
     {
       "type": "panel",
@@ -1411,7 +1411,7 @@
           "fill": 6,
           "grid": {},
           "height": "",
-          "id": 35,
+          "id": 39,
           "legend": {
             "alignAsTable": true,
             "avg": true,
@@ -1434,21 +1434,35 @@
           "pointradius": 5,
           "points": false,
           "renderer": "flot",
-          "seriesOverrides": [],
+          "seriesOverrides": [
+            {
+              "alias": "Total",
+              "legend": false,
+              "stack": false
+            }
+          ],
           "spaceLength": 10,
           "span": 6,
           "stack": true,
           "steppedLine": false,
           "targets": [
             {
+              "expr": "node_filesystem_files{mountpoint=\"/\", instance=\"$host\"}",
+              "format": "time_series",
+              "intervalFactor": 1,
+              "legendFormat": "Total",
+              "refId": "C",
+              "step": 60
+            },
+            {
               "calculatedInterval": "2s",
               "datasourceErrors": {},
               "errors": {},
-              "expr": "node_sockstat_TCP_inuse{instance=\"$host\"}",
+              "expr": "node_filesystem_files{mountpoint=\"/\", instance=\"$host\"} - node_filesystem_files_free{mountpoint=\"/\", instance=\"$host\"}",
               "format": "time_series",
               "interval": "$interval",
               "intervalFactor": 1,
-              "legendFormat": "Establish",
+              "legendFormat": "Used",
               "metric": "",
               "refId": "A",
               "step": 300,
@@ -1458,11 +1472,11 @@
               "calculatedInterval": "2s",
               "datasourceErrors": {},
               "errors": {},
-              "expr": "node_sockstat_TCP_tw{instance=\"$host\"}",
+              "expr": "node_filesystem_files_free{mountpoint=\"/\", instance=\"$host\"}",
               "format": "time_series",
               "interval": "$interval",
               "intervalFactor": 1,
-              "legendFormat": "Closed",
+              "legendFormat": "Available",
               "metric": "",
               "refId": "B",
               "step": 300,
@@ -1472,7 +1486,7 @@
           "thresholds": [],
           "timeFrom": null,
           "timeShift": null,
-          "title": "Network Connections",
+          "title": "Inodes",
           "tooltip": {
             "msResolution": false,
             "shared": true,
@@ -1490,7 +1504,7 @@
           },
           "yaxes": [
             {
-              "format": "none",
+              "format": "short",
               "label": "",
               "logBase": 1,
               "max": null,
@@ -1498,7 +1512,7 @@
               "show": true
             },
             {
-              "format": "none",
+              "format": "short",
               "logBase": 1,
               "max": null,
               "min": 0,
@@ -1620,6 +1634,224 @@
             },
             {
               "format": "bytes",
+              "logBase": 1,
+              "max": null,
+              "min": 0,
+              "show": true
+            }
+          ]
+        },
+        {
+          "aliasColors": {},
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": "${DS_PROMETHEUS}",
+          "decimals": null,
+          "editable": true,
+          "error": false,
+          "fill": 2,
+          "grid": {},
+          "id": 38,
+          "legend": {
+            "alignAsTable": true,
+            "avg": true,
+            "current": false,
+            "hideEmpty": false,
+            "max": true,
+            "min": true,
+            "rightSide": false,
+            "show": true,
+            "sort": null,
+            "sortDesc": null,
+            "total": false,
+            "values": true
+          },
+          "lines": true,
+          "linewidth": 2,
+          "links": [],
+          "nullPointMode": "null",
+          "percentage": false,
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [
+            {
+              "alias": "Outbound",
+              "transform": "negative-Y"
+            }
+          ],
+          "spaceLength": 10,
+          "span": 6,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
+            {
+              "calculatedInterval": "2s",
+              "datasourceErrors": {},
+              "errors": {},
+              "expr": "sum(rate(node_network_receive_packets{instance=\"$host\", device!=\"lo\"}[$interval]) or irate(node_network_receive_packets{instance=\"$host\", device!=\"lo\"}[5m]))",
+              "format": "time_series",
+              "interval": "$interval",
+              "intervalFactor": 1,
+              "legendFormat": "Inbound",
+              "metric": "",
+              "refId": "B",
+              "step": 300,
+              "target": ""
+            },
+            {
+              "calculatedInterval": "2s",
+              "datasourceErrors": {},
+              "errors": {},
+              "expr": "sum(rate(node_network_transmit_packets{instance=\"$host\", device!=\"lo\"}[$interval]) or irate(node_network_transmit_packets{instance=\"$host\", device!=\"lo\"}[5m]))",
+              "format": "time_series",
+              "interval": "$interval",
+              "intervalFactor": 1,
+              "legendFormat": "Outbound",
+              "metric": "",
+              "refId": "A",
+              "step": 300,
+              "target": ""
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "Network Packets",
+          "tooltip": {
+            "msResolution": false,
+            "shared": true,
+            "sort": 0,
+            "value_type": "individual"
+          },
+          "transparent": false,
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "format": "none",
+              "label": "",
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            },
+            {
+              "format": "none",
+              "logBase": 1,
+              "max": null,
+              "min": 0,
+              "show": true
+            }
+          ]
+        },
+        {
+          "aliasColors": {},
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": "${DS_PROMETHEUS}",
+          "decimals": null,
+          "editable": true,
+          "error": false,
+          "fill": 6,
+          "grid": {},
+          "height": "",
+          "id": 35,
+          "legend": {
+            "alignAsTable": true,
+            "avg": true,
+            "current": false,
+            "hideEmpty": false,
+            "max": true,
+            "min": true,
+            "rightSide": false,
+            "show": true,
+            "sort": "avg",
+            "sortDesc": true,
+            "total": false,
+            "values": true
+          },
+          "lines": true,
+          "linewidth": 2,
+          "links": [],
+          "nullPointMode": "null",
+          "percentage": false,
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "span": 6,
+          "stack": true,
+          "steppedLine": false,
+          "targets": [
+            {
+              "calculatedInterval": "2s",
+              "datasourceErrors": {},
+              "errors": {},
+              "expr": "node_sockstat_TCP_inuse{instance=\"$host\"}",
+              "format": "time_series",
+              "interval": "$interval",
+              "intervalFactor": 1,
+              "legendFormat": "Establish",
+              "metric": "",
+              "refId": "A",
+              "step": 300,
+              "target": ""
+            },
+            {
+              "calculatedInterval": "2s",
+              "datasourceErrors": {},
+              "errors": {},
+              "expr": "node_sockstat_TCP_tw{instance=\"$host\"}",
+              "format": "time_series",
+              "interval": "$interval",
+              "intervalFactor": 1,
+              "legendFormat": "Closed",
+              "metric": "",
+              "refId": "B",
+              "step": 300,
+              "target": ""
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "Network Connections",
+          "tooltip": {
+            "msResolution": false,
+            "shared": true,
+            "sort": 0,
+            "value_type": "individual"
+          },
+          "transparent": false,
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "format": "none",
+              "label": "",
+              "logBase": 1,
+              "max": null,
+              "min": 0,
+              "show": true
+            },
+            {
+              "format": "none",
               "logBase": 1,
               "max": null,
               "min": 0,
@@ -2203,7 +2435,6 @@
         "auto_count": 200,
         "auto_min": "1s",
         "current": {
-          "selected": true,
           "text": "auto",
           "value": "$__auto_interval"
         },
@@ -2322,5 +2553,5 @@
   },
   "timezone": "browser",
   "title": "System Overview",
-  "version": 1
+  "version": 4
 }
