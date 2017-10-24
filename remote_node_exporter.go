@@ -36,23 +36,26 @@ import (
 	"github.com/prometheus/common/version"
 )
 
-const (
-	DefaultTextfilePath = "/var/lib/prometheus/node-exporter"
-)
-
 var (
 	configFile = kingpin.Flag("config.file", "Remote node exporter configuration file.").Default("remote_node_exporter.yml").String()
 )
 
 var (
-	Port         = os.Getenv("PORT")
-	SshHost      = os.Getenv("SSH_HOST")
-	SshPort      = os.Getenv("SSH_PORT")
-	SshUser      = os.Getenv("SSH_USER")
-	SshPass      = os.Getenv("SSH_PASS")
-	RemoteAddr   = os.Getenv("REMOTE_ADDR")
-	TextfilePath = os.Getenv("TEXTFILE_PATH")
+	Port       = os.Getenv("PORT")
+	SshHost    = os.Getenv("SSH_HOST")
+	SshPort    = os.Getenv("SSH_PORT")
+	SshUser    = os.Getenv("SSH_USER")
+	SshPass    = os.Getenv("SSH_PASS")
+	RemoteAddr = os.Getenv("REMOTE_ADDR")
 )
+
+var TextfilePath string = func() string {
+	s := os.Getenv("TEXTFILE_PATH")
+	if s == "" {
+		s = "/var/lib/prometheus/node-exporter"
+	}
+	return s + "/*.prom"
+}()
 
 var PreReadFileList []string = []string{
 	"/etc/storage/system_time",
@@ -72,6 +75,7 @@ var PreReadFileList []string = []string{
 	"/proc/sys/net/netfilter/nf_conntrack_count",
 	"/proc/sys/net/netfilter/nf_conntrack_max",
 	"/proc/vmstat",
+	TextfilePath,
 }
 
 var split func(string, int) []string = regexp.MustCompile(`\s+`).Split
@@ -273,10 +277,6 @@ func (m *Metrics) PreRead() error {
 	m.preread = make(map[string]string)
 
 	cmd := "/bin/fgrep \"\" " + strings.Join(PreReadFileList, " ")
-	if TextfilePath == "" {
-		TextfilePath = DefaultTextfilePath
-	}
-	cmd += " " + TextfilePath + "/*.prom"
 
 	output, _ := m.Client.Execute(cmd)
 
@@ -1168,3 +1168,4 @@ func main() {
 
 	log.Fatal(http.ListenAndServe(":"+Port, nil))
 }
+
