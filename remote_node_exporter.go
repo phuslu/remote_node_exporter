@@ -121,7 +121,7 @@ func (c *Client) connect() error {
 	var b bytes.Buffer
 	session.Stdout = &b
 
-	session.Run("date +%z; test -f /usr/bin/timeout && echo 1 || echo 0")
+	session.Run("date +%z; test -f /usr/bin/timeout; echo $?")
 	parts := strings.Split(b.String(), "\n")
 	log.Infof("session.Run() return %#v\n", parts)
 	s := strings.TrimSpace(parts[0])
@@ -135,7 +135,7 @@ func (c *Client) connect() error {
 		}
 
 	}
-	if parts[1] == "1" {
+	if parts[1] == "0" {
 		c.hasTimeout = true
 	}
 	log.Infof("%#v timezone is %+v, has timeout command is %+v\n", c.Addr, c.timeOffset, c.hasTimeout)
