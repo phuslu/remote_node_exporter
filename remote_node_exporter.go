@@ -46,6 +46,7 @@ var (
 	SshPort    = os.Getenv("SSH_PORT")
 	SshUser    = os.Getenv("SSH_USER")
 	SshPass    = os.Getenv("SSH_PASS")
+	SshKey     = os.Getenv("SSH_KEY")
 	RemoteAddr = os.Getenv("REMOTE_ADDR")
 )
 
@@ -75,6 +76,7 @@ var PreReadFileList []string = []string{
 	"/proc/sys/net/netfilter/nf_conntrack_count",
 	"/proc/sys/net/netfilter/nf_conntrack_max",
 	"/proc/vmstat",
+	"/tmp/proc/mdstat",
 	TextfilePath,
 }
 
@@ -784,6 +786,15 @@ func (m *Metrics) CollectDiskstats() error {
 	return err
 }
 
+func (m *Metrics) CollectMDStat() error {
+	_, err := m.ReadFile("/tmp/proc/mdstat")
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // https://github.com/prometheus/node_exporter/blob/master/collector/filesystem_linux.go
 const (
 	defIgnoredMountPoints = "^/(sys|proc|dev)($|/)"
@@ -950,6 +961,7 @@ func (m *Metrics) CollectAll() (string, error) {
 	m.CollectArp()
 	m.CollectEntropy()
 	m.CollectDiskstats()
+	m.CollectMDStat()
 	m.CollectFilesystem()
 	m.CollectTextfile()
 
@@ -1011,6 +1023,7 @@ func main() {
 				Port  int
 				User  string
 				Pass  string
+				Key   string
 				Local int
 			}
 			Forward []struct {
@@ -1018,6 +1031,7 @@ func main() {
 				Port   int
 				User   string
 				Pass   string
+				Key    string
 				Local  int
 				Remote string
 			}
@@ -1066,6 +1080,7 @@ func main() {
 				"SSH_PORT="+strconv.Itoa(s.Port),
 				"SSH_USER="+s.User,
 				"SSH_PASS="+s.Pass,
+				"SSH_KEY="+s.Key,
 				"PORT="+strconv.Itoa(s.Local),
 			)
 			go cmd.Run()
@@ -1084,6 +1099,7 @@ func main() {
 				"SSH_PORT="+strconv.Itoa(s.Port),
 				"SSH_USER="+s.User,
 				"SSH_PASS="+s.Pass,
+				"SSH_KEY="+s.Key,
 				"PORT="+strconv.Itoa(s.Local),
 				"REMOTE_ADDR="+s.Remote,
 			)
@@ -1130,6 +1146,21 @@ func main() {
 		},
 	}
 
+	if SshKey != "" {
+		key, err := ioutil.ReadFile(SshKey)
+		if err != nil {
+			log.Fatalf("unable to read private key: %v", err)
+		}
+
+		// Create the Signer for this private key.
+		signer, err := ssh.ParsePrivateKey(key)
+		if err != nil {
+			log.Fatalf("unable to parse private key: %v", err)
+		}
+
+		client.Config.Auth[0] = ssh.PublicKeys(signer)
+	}
+
 	http.HandleFunc("/metrics", func(rw http.ResponseWriter, req *http.Request) {
 		m := Metrics{
 			Client: client,
@@ -1168,4 +1199,3 @@ func main() {
 
 	log.Fatal(http.ListenAndServe(":"+Port, nil))
 }
-
