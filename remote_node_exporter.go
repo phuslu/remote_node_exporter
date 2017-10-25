@@ -55,7 +55,7 @@ var TextfilePath string = func() string {
 	if s == "" {
 		s = "/var/lib/prometheus/node-exporter"
 	}
-	return s + "/*.prom"
+	return strings.TrimSuffix(s, "/") + "/"
 }()
 
 var PreReadFileList []string = []string{
@@ -77,7 +77,7 @@ var PreReadFileList []string = []string{
 	"/proc/sys/net/netfilter/nf_conntrack_max",
 	"/proc/vmstat",
 	"/tmp/proc/mdstat",
-	TextfilePath,
+	TextfilePath + "*.prom",
 }
 
 var split func(string, int) []string = regexp.MustCompile(`\s+`).Split
