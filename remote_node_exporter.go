@@ -996,12 +996,14 @@ func Forward(lconn net.Conn) {
 }
 
 func SetProcessName(name string) error {
-	argv0str := (*reflect.StringHeader)(unsafe.Pointer(&os.Args[0]))
-	argv0 := (*[1 << 30]byte)(unsafe.Pointer(argv0str.Data))[:len(name)+1]
+	if runtime.GOOS == "linux" {
+		argv0str := (*reflect.StringHeader)(unsafe.Pointer(&os.Args[0]))
+		argv0 := (*[1 << 30]byte)(unsafe.Pointer(argv0str.Data))[:len(name)+1]
 
-	n := copy(argv0, name+string(0))
-	if n < len(argv0) {
-		argv0[n] = 0
+		n := copy(argv0, name+string(0))
+		if n < len(argv0) {
+			argv0[n] = 0
+		}
 	}
 
 	return nil
@@ -1174,6 +1176,7 @@ func main() {
 
 		if strings.Contains(req.Header.Get("Accept-Encoding"), "gzip") {
 			rw.Header().Set("Content-Encoding", "gzip")
+			rw.Header().Set("Content-Type", "text/plain")
 			rw.WriteHeader(http.StatusOK)
 			w := gzip.NewWriter(rw)
 			io.WriteString(w, s)
@@ -1193,9 +1196,7 @@ func main() {
 			</html>`)
 	})
 
-	if runtime.GOOS == "linux" {
-		SetProcessName(fmt.Sprintf("remote_node_exporter: [%s@%s] listening %s", SshUser, SshHost, Port))
-	}
+	SetProcessName(fmt.Sprintf("remote_node_exporter: [%s@%s] listening %s", SshUser, SshHost, Port))
 
 	log.Fatal(http.ListenAndServe(":"+Port, nil))
 }
