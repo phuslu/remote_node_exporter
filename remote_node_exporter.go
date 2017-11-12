@@ -161,6 +161,7 @@ func (c *Client) Execute(cmd string) (string, error) {
 		if err != nil {
 			if i < retry-1 {
 				log.Infof("NewSession() error: %+v, reconnecting...\n", err)
+				c.client.Close()
 				c.connect()
 				continue
 			}
