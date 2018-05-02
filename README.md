@@ -11,7 +11,7 @@ mkdir prometheus
 sudo mv prometheus /opt/
 cd /opt/prometheus
 
-curl -L https://github.com/prometheus/prometheus/releases/download/v1.7.1/prometheus-1.7.1.linux-amd64.tar.gz | tar xvzp --strip-components=1
+curl -L https://github.com/prometheus/prometheus/releases/download/v2.2.1/prometheus-2.2.1.linux-amd64.tar.gz | tar xvzp --strip-components=1
 curl -L https://github.com/prometheus/blackbox_exporter/releases/download/v0.8.1/blackbox_exporter-0.8.1.linux-amd64.tar.gz | tar xvzp --strip-components=1
 curl -L https://github.com/phuslu/remote_node_exporter/releases/download/v0.11.0/remote_node_exporter-0.11.0.linux-amd64.tar.gz | tar xvzp --strip-components=1
 
@@ -118,7 +118,7 @@ mkdir grafana
 sudo mv grafana /opt/
 cd /opt/grafana
 
-curl -L https://s3-us-west-2.amazonaws.com/grafana-releases/release/grafana-4.5.1.linux-x64.tar.gz | tar xvzp --strip-components=1
+curl -L https://s3-us-west-2.amazonaws.com/grafana-releases/release/grafana-5.1.0.linux-x64.tar.gz | tar xvzp --strip-components=1
 
 cat <<EOF >grafana.service
 [Unit]
