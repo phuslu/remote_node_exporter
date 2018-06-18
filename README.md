@@ -76,7 +76,7 @@ LimitNPROC=100000
 WantedBy=multi-user.target
 EOF
 
-cat <<EOF >prometheus-blackbox-exporter.service
+cat <<EOF >blackbox-exporter.service
 [Unit]
 Description=prometheus blackbox exporter
 
@@ -90,7 +90,7 @@ LimitNPROC=100000
 WantedBy=multi-user.target
 EOF
 
-cat <<EOF >prometheus-remote-node-exporter.service
+cat <<EOF >remote-node-exporter.service
 [Unit]
 Description=prometheus remote node exporter
 
