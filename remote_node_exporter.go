@@ -152,7 +152,7 @@ func (c *Client) TimeOffset() time.Duration {
 }
 
 func (c *Client) Execute(cmd string) (string, error) {
-	log.Infof("%T.Execute(%#v)\n", c, cmd)
+	log.Debugf("%T.Execute(%#v)\n", c, cmd)
 
 	if c.client == nil {
 		c.connect()
