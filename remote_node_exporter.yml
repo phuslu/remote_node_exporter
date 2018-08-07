@@ -10,6 +10,7 @@ exporter:
     user: foobar
     key: /home/foobar/.ssh/id_rsa
     local: 10002
+    script: remote_textfile_script.sh
 
 forward:
   - host: example.org

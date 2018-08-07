@@ -11,6 +11,7 @@ import (
 	"bufio"
 	"bytes"
 	"compress/gzip"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -47,6 +48,7 @@ var (
 	SshUser    = os.Getenv("SSH_USER")
 	SshPass    = os.Getenv("SSH_PASS")
 	SshKey     = os.Getenv("SSH_KEY")
+	SshScript  = os.Getenv("SSH_SCRIPT")
 	RemoteAddr = os.Getenv("REMOTE_ADDR")
 )
 
@@ -89,6 +91,7 @@ type Client struct {
 	client     *ssh.Client
 	timeOffset time.Duration
 	hasTimeout bool
+	script     string
 	mu         sync.Mutex
 }
 
@@ -941,6 +944,13 @@ func (m *Metrics) CollectTextfile() error {
 	return nil
 }
 
+func (m *Metrics) CollectScript() error {
+	cmd := fmt.Sprintf("echo %s | base64 -d | gunzip | sh", m.Client.script)
+	output, _ := m.Client.Execute(cmd)
+	m.PrintRaw(output)
+	return nil
+}
+
 func (m *Metrics) CollectAll() (string, error) {
 	var err error
 
@@ -965,6 +975,7 @@ func (m *Metrics) CollectAll() (string, error) {
 	m.CollectMDStat()
 	m.CollectFilesystem()
 	m.CollectTextfile()
+	m.CollectScript()
 
 	return m.body.String(), nil
 }
@@ -1022,12 +1033,13 @@ func main() {
 	if SshHost == "" {
 		type Config struct {
 			Exporter []struct {
-				Host  string
-				Port  int
-				User  string
-				Pass  string
-				Key   string
-				Local int
+				Host   string
+				Port   int
+				User   string
+				Pass   string
+				Key    string
+				Local  int
+				Script string
 			}
 			Forward []struct {
 				Host   string
@@ -1084,6 +1096,7 @@ func main() {
 				"SSH_USER="+s.User,
 				"SSH_PASS="+s.Pass,
 				"SSH_KEY="+s.Key,
+				"SSH_SCRIPT="+s.Script,
 				"PORT="+strconv.Itoa(s.Local),
 			)
 			go cmd.Run()
@@ -1162,6 +1175,20 @@ func main() {
 		}
 
 		client.Config.Auth[0] = ssh.PublicKeys(signer)
+	}
+
+	if SshScript != "" {
+		data, err := ioutil.ReadFile(SshScript)
+		if err != nil {
+			log.Fatalf("unable to read private key: %v", err)
+		}
+
+		var b bytes.Buffer
+		w := gzip.NewWriter(&b)
+		w.Write(data)
+		w.Flush()
+
+		client.script = base64.StdEncoding.EncodeToString(b.Bytes())
 	}
 
 	http.HandleFunc("/metrics", func(rw http.ResponseWriter, req *http.Request) {
