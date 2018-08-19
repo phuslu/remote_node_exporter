@@ -11,9 +11,8 @@ mkdir prometheus
 sudo mv prometheus /opt/
 cd /opt/prometheus
 
-curl -L https://github.com/prometheus/prometheus/releases/download/v2.2.1/prometheus-2.2.1.linux-amd64.tar.gz | tar xvzp --strip-components=1
-curl -L https://github.com/prometheus/blackbox_exporter/releases/download/v0.8.1/blackbox_exporter-0.8.1.linux-amd64.tar.gz | tar xvzp --strip-components=1
-curl -L https://github.com/phuslu/remote_node_exporter/releases/download/v0.11.0/remote_node_exporter-0.11.0.linux-amd64.tar.gz | tar xvzp --strip-components=1
+curl -L https://github.com/prometheus/prometheus/releases/download/v2.3.2/prometheus-2.3.2.linux-amd64.tar.gz | tar xvzp --strip-components=1
+curl -L https://github.com/phuslu/remote_node_exporter/releases/download/v0.12.0/remote_node_exporter-0.12.0.linux-amd64.tar.gz | tar xvzp --strip-components=1
 
 ```
 2. Configure prometheus.yml
@@ -23,40 +22,12 @@ global:
   evaluation_interval: 15s
 
 scrape_configs:
-  - job_name: 'node_exporter'
+  - job_name: 'remote_node_exporter'
     scheme: 'http'
     static_configs:
       - targets: ['192.168.2.2:10001']
         labels:
-          instance: phus.lu
-  - job_name: 'blackbox'
-    metrics_path: /probe
-    params:
-      module: [http_2xx]
-    static_configs:
-      - targets:
-        - https://phus.lu
-    relabel_configs:
-      - source_labels: [__address__]
-        target_label: __param_target
-      - source_labels: [__param_target]
-        target_label: instance
-      - target_label: __address__
-        replacement: 127.0.0.1:9115
-  - job_name: 'ping'
-    metrics_path: /probe
-    params:
-      module: [icmp]
-    static_configs:
-      - targets:
-        - phus.lu
-    relabel_configs:
-      - source_labels: [__address__]
-        target_label: __param_target
-      - source_labels: [__param_target]
-        target_label: instance
-      - target_label: __address__
-        replacement: 127.0.0.1:9115
+          instance: lab.phus.lu
 ```
 3. Create systemd services
 ```
@@ -68,20 +39,6 @@ Description=prometheus
 WorkingDirectory=/opt/prometheus
 ExecStart=/opt/prometheus/prometheus --config.file=/opt/prometheus/prometheus.yml
 ExecReload=/bin/kill -HUP \$MAINPID
-Restart=always
-LimitNOFILE=100000
-LimitNPROC=100000
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-cat <<EOF >blackbox-exporter.service
-[Unit]
-Description=prometheus blackbox exporter
-
-[Service]
-ExecStart=/opt/prometheus/blackbox_exporter --config.file=/opt/prometheus/blackbox.yml
 Restart=always
 LimitNOFILE=100000
 LimitNPROC=100000
@@ -108,8 +65,7 @@ EOF
 4. start monitoring services
 ```
 sudo systemctl enable $(pwd)/*.service
-sudo systemctl start prometheus-blackbox-exporter
-sudo systemctl start prometheus-remote-node-exporter
+sudo systemctl start remote-node-exporter
 sudo systemctl start prometheus
 ```
 5. Install grafana
@@ -118,7 +74,7 @@ mkdir grafana
 sudo mv grafana /opt/
 cd /opt/grafana
 
-curl -L https://s3-us-west-2.amazonaws.com/grafana-releases/release/grafana-5.1.0.linux-x64.tar.gz | tar xvzp --strip-components=1
+curl -L https://s3-us-west-2.amazonaws.com/grafana-releases/release/grafana-5.2.2.linux-x64.tar.gz | tar xvzp --strip-components=1
 
 cat <<EOF >grafana.service
 [Unit]
